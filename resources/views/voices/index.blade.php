@@ -85,7 +85,7 @@
             <td>{{ $v->vendor }}</td>
             <td>{{ $v->language_full }}</td>
             <td>{{ $v->language_code }}</td>
-            <td>{{ ucfirst(strtolower($v->gender ?? ''))) }}</td>
+            <td>{{ ucfirst(strtolower($v->gender ?? '')) }}</td>
             <td>{{ $v->voice_name }}</td>
             <td>
               <button class="btn btn-sm btn-light btnPreview" title="Preview">
