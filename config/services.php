@@ -31,4 +31,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'google_tts' => [
+        'project_id'   => env('GOOGLE_CLOUD_PROJECT'),
+        'credentials'  => env('GOOGLE_APPLICATION_CREDENTIALS'),
+    ],
+
 ];
