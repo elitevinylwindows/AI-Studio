@@ -1,0 +1,1 @@
+[28-Jul-2025 15:37:55 America/Chicago] PHP Fatal error:  Composer detected issues in your platform: Your Composer dependencies require a PHP version ">= 8.2.0". You are running 8.1.33. in /home4/aizwmjte/studio.elitevinylwindows.com/vendor/composer/platform_check.php on line 24
