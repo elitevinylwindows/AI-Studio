@@ -5,14 +5,19 @@
 @push('styles')
 <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-2.0.7/datatables.min.css">
 @endpush
-
+<div class="mb-4"> </div>
 @section('content')
 <div class="card shadow-sm border-0">
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h5 class="mb-0">Google TTS Voices</h5>
-      {{-- You can add a Sync button here if needed --}}
-      {{-- <a href="{{ route('voices.sync') }}" class="btn btn-primary">Sync Voices</a> --}}
+<form method="POST" action="{{ route('voices.sync') }}">
+    @csrf
+    <button class="btn btn-primary">
+      <i class="ti ti-refresh"></i> Sync Voices
+    </button>
+  </form>
+        {{-- <a href="{{ route('voices.sync') }}" class="btn btn-primary">Sync Voices</a> --}}
     </div>
 
     {{-- Filters Row --}}

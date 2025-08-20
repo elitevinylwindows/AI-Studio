@@ -5,14 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Voice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-
-// If you already created a TTS factory/service, you can reuse it.
-// For a self-contained example, we'll inline a tiny client maker:
-use Google\Cloud\TextToSpeech\V1\TextToSpeechClient;
+use Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient;
 use Google\Cloud\TextToSpeech\V1\AudioEncoding;
 use Google\Cloud\TextToSpeech\V1\SynthesisInput;
 use Google\Cloud\TextToSpeech\V1\VoiceSelectionParams;
 use Google\Cloud\TextToSpeech\V1\AudioConfig;
+use Google\Cloud\TextToSpeech\V1\SsmlVoiceGender;
 
 class VoiceController extends Controller
 {
@@ -147,4 +145,95 @@ class VoiceController extends Controller
 
         return [$audioContent, $ext];
     }
+
+    public function sync(Request $request)
+    {
+        [$client, $transport] = $this->buildTtsClient();
+        $resp = $client->listVoices();
+
+        $count = 0;
+
+        foreach ($resp->getVoices() as $gVoice) {
+            $name   = $gVoice->getName();                       // e.g. "en-US-Neural2-A"
+            $gender = SsmlVoiceGender::name($gVoice->getSsmlGender()); // "MALE"/"FEMALE"/"NEUTRAL"
+            $gender = $gender ? ucfirst(strtolower($gender)) : null;
+
+            foreach ($gVoice->getLanguageCodes() as $code) {    // e.g. "en-US"
+                $full = $this->languageFullFromCode($code);     // e.g. "English (United States)"
+
+                // Upsert by (voice_id + language_code)
+                Voice::updateOrCreate(
+                    ['voice_id' => $name, 'language_code' => $code],
+                    [
+                        'vendor'         => 'Google',
+                        'language'       => $code,          // keep short if you want
+                        'language_full'  => $full,
+                        'voice_name'     => $name,
+                        'gender'         => $gender,
+                        'voice_engine'   => 'Neural',
+                        // keep existing editable fields if set
+                        'audio_format'   => \DB::raw("COALESCE(audio_format, 'mp3')"),
+                        'status'         => 'Active',
+                    ]
+                );
+                $count++;
+            }
+        }
+
+        return back()->with('success', "Synced $count voice entries via $transport.");
+    }
+
+    /** Build a client that works on Windows/shared hosting without ADC */
+    private function buildTtsClient(): array
+    {
+        $transport = 'rest'; // avoid gRPC dependency headaches
+        $path = env('GOOGLE_APPLICATION_CREDENTIALS');
+
+        if ($path && is_file($path) && is_readable($path)) {
+            $creds = json_decode(file_get_contents($path), true);
+            return [new TextToSpeechClient(['credentials' => $creds, 'transport' => $transport]), $transport];
+        }
+        $fallback = storage_path('app/keys/google-tts.json');
+        if (is_file($fallback) && is_readable($fallback)) {
+            $creds = json_decode(file_get_contents($fallback), true);
+            return [new TextToSpeechClient(['credentials' => $creds, 'transport' => $transport]), $transport];
+        }
+        if ($json = env('GOOGLE_APPLICATION_CREDENTIALS_JSON')) {
+            $creds = json_decode($json, true);
+            return [new TextToSpeechClient(['credentials' => $creds, 'transport' => $transport]), $transport];
+        }
+        // Last resort uses ADC (may fail if not configured)
+        return [new TextToSpeechClient(['transport' => $transport]), $transport];
+    }
+
+    /** Convert "en-US" → "English (United States)". Requires PHP intl; falls back cleanly. */
+    private function languageFullFromCode(string $bcp47): string
+    {
+        // Prefer PHP intl if available
+        if (class_exists(\Locale::class)) {
+            // Normalize separator and components
+            $norm = str_replace('_', '-', $bcp47);
+            $lang = \Locale::getPrimaryLanguage($norm); // "en"
+            $reg  = \Locale::getRegion($norm);          // "US" (may be "")
+            $dispLang = \Locale::getDisplayLanguage($norm, 'en'); // "English"
+            $dispReg  = $reg ? \Locale::getDisplayRegion('und_'.$reg, 'en') : '';
+
+            return $dispReg ? "{$dispLang} ({$dispReg})" : $dispLang;
+        }
+
+        // Minimal fallback map for when intl is missing
+        static $fallback = [
+            'en' => 'English', 'en-US' => 'English (United States)', 'en-GB' => 'English (United Kingdom)',
+            'es' => 'Spanish', 'es-ES' => 'Spanish (Spain)', 'es-MX' => 'Spanish (Mexico)',
+            'fr' => 'French',  'fr-FR' => 'French (France)', 'fr-CA' => 'French (Canada)',
+            'de' => 'German',  'de-DE' => 'German (Germany)',
+            'pt' => 'Portuguese', 'pt-BR' => 'Portuguese (Brazil)', 'pt-PT' => 'Portuguese (Portugal)',
+            'it' => 'Italian', 'it-IT' => 'Italian (Italy)',
+            'ja' => 'Japanese', 'ja-JP' => 'Japanese (Japan)',
+            'ko' => 'Korean', 'ko-KR' => 'Korean (South Korea)',
+            'zh' => 'Chinese', 'zh-CN' => 'Chinese (China)', 'zh-TW' => 'Chinese (Taiwan)', 'zh-HK' => 'Chinese (Hong Kong)',
+        ];
+        return $fallback[$bcp47] ?? $fallback[substr($bcp47,0,2)] ?? $bcp47;
+    }
+
 }

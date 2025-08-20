@@ -359,10 +359,14 @@ Route::post('/studio/project/save', [StudioController::class, 'save'])->name('st
 Route::post('/studio/scene/upload', [StudioController::class, 'upload'])->name('studio.upload'); // bg video / avatar image
 Route::post('/studio/export', [StudioController::class, 'export'])->name('studio.export'); // stub
 
+
+
 Route::prefix('tts')->name('voices.')->group(function () {
-    Route::get('/voices',                [VoiceController::class, 'index'])->name('index');
-    Route::get('/voices/codes',          [VoiceController::class, 'codes'])->name('codes');
-    Route::put('/voices/{voice}',        [VoiceController::class, 'update'])->name('update');
-    Route::post('/voices/{voice}/preview',[VoiceController::class, 'preview'])->name('preview');
+    Route::get('/voices', [VoiceController::class, 'index'])->name('index');
+    Route::post('/voices/sync', [VoiceController::class, 'sync'])->name('sync');   // <= add this
+    Route::get('/voices/codes', [VoiceController::class, 'codes'])->name('codes');
+    Route::put('/voices/{voice}', [VoiceController::class, 'update'])->name('update');
+    Route::post('/voices/{voice}/preview', [VoiceController::class, 'preview'])->name('preview');
 });
+
 
