@@ -358,3 +358,8 @@ Route::get('/studio', [StudioController::class, 'index'])->name('studio.index');
 Route::post('/studio/project/save', [StudioController::class, 'save'])->name('studio.save');
 Route::post('/studio/scene/upload', [StudioController::class, 'upload'])->name('studio.upload'); // bg video / avatar image
 Route::post('/studio/export', [StudioController::class, 'export'])->name('studio.export'); // stub
+
+Route::prefix('tts')->group(function () {
+    Route::get('/voices', [VoiceController::class, 'index'])->name('voices.index');
+    Route::get('/voices/sync', [VoiceController::class, 'sync'])->name('voices.sync');
+});
