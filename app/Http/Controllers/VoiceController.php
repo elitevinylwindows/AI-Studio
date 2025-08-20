@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Voice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Google\Cloud\TextToSpeech\V1\TextToSpeechClient;
+use Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient;
 use Google\Cloud\TextToSpeech\V1\AudioEncoding;
 use Google\Cloud\TextToSpeech\V1\SynthesisInput;
 use Google\Cloud\TextToSpeech\V1\VoiceSelectionParams;
