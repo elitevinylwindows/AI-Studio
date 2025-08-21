@@ -97,7 +97,7 @@ class VoiceController extends Controller
     public function sync(Request $request)
     {
         [$client, $transport] = $this->buildTtsClient();
-        $resp = $client->listVoices();
+        $resp = $client->listVoices(['languageCode' => 'en-US']);
 
         $count = 0;
 
