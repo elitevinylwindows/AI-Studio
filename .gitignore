@@ -1,17 +1,5 @@
 /vendor/srmklive
 /.idea
 /.vscode
-
-# Ignore storage & vendor by default
-/storage/*
 /vendor/*
 /Old/*
-
-# --- allow the keys folder to exist in Git, but ignore its contents ---
-!storage/app/keys/
-storage/app/keys/*
-!storage/app/keys/.gitkeep
-
-# (optional) also keep a placeholder for public disk structure (still ignore files)
-/storage/app/public/*
-!storage/app/public/.gitkeep
