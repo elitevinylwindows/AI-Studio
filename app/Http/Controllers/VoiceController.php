@@ -17,6 +17,8 @@ use Google\Cloud\TextToSpeech\V1\AudioConfig;
 use Google\Cloud\TextToSpeech\V1\SsmlVoiceGender;
 use Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient;
 use Google\Cloud\TextToSpeech\V1\ListVoicesRequest;
+use Google\Cloud\TextToSpeech\V1\SynthesizeSpeechRequest;
+
 
 class VoiceController extends Controller
 {
@@ -76,25 +78,31 @@ class VoiceController extends Controller
 
     // Generate preview (saves a sample file and returns its URL)
     public function preview(Request $request, Voice $voice)
-    {
+{
+    try {
         $text   = $voice->voice_text ?: 'Hello from Google Text to Speech';
         $format = $voice->audio_format ?: 'mp3';
 
         [$audioContent, $ext] = $this->ttsSynthesize($text, $voice->language_code, $voice->voice_name, $format);
 
-        // Store file
         $dir = storage_path('app/public/tts_samples');
         if (!is_dir($dir)) mkdir($dir, 0775, true);
 
         $fileName = 'voice_'.$voice->id.'_'.Str::random(8).'.'.$ext;
         file_put_contents($dir.'/'.$fileName, $audioContent);
 
-        // update sample_url for convenience
+        // make sure you've run: php artisan storage:link
         $publicUrl = asset('storage/tts_samples/'.$fileName);
         $voice->update(['sample_url' => $publicUrl]);
 
         return response()->json(['url' => $publicUrl]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'error' => get_class($e).': '.$e->getMessage()
+        ], 422);
     }
+}
+
 
     public function sync(Request $request)
     {
@@ -211,32 +219,42 @@ class VoiceController extends Controller
      * @return array{0:string,1:string} [binary audio, file extension]
      */
     private function ttsSynthesize(string $text, string $languageCode, string $voiceName, string $format): array
-    {
-        [$client] = $this->buildTtsClient();
+{
+    [$client] = $this->buildTtsClient();
 
-        $inputText = (new SynthesisInput())->setText($text);
+    $inputText = (new SynthesisInput())->setText($text);
 
-        $voice = (new VoiceSelectionParams())
-            ->setLanguageCode($languageCode) // e.g. "en-US"
-            ->setName($voiceName);           // e.g. "en-US-Neural2-A"
+    $voice = (new VoiceSelectionParams())
+        ->setLanguageCode($languageCode) // e.g. "en-US"
+        ->setName($voiceName);           // e.g. "en-US-Neural2-A"
 
-        // Pick encoding
-        switch ($format) {
-            case 'ogg':
-                $encoding = AudioEncoding::OGG_OPUS; $ext = 'ogg'; break;
-            case 'wav':
-                $encoding = AudioEncoding::LINEAR16; $ext = 'wav'; break;
-            default:
-                $encoding = AudioEncoding::MP3; $ext = 'mp3';
-        }
-
-        $audioConfig = (new AudioConfig())->setAudioEncoding($encoding);
-
-        $response = $client->synthesizeSpeech($inputText, $voice, $audioConfig);
-        $audioContent = $response->getAudioContent();
-
-        return [$audioContent, $ext];
+    // Pick encoding + extension
+    switch ($format) {
+        case 'ogg':
+            $encoding = AudioEncoding::OGG_OPUS; $ext = 'ogg'; break;
+        case 'wav':
+            $encoding = AudioEncoding::LINEAR16; $ext = 'wav'; break;
+        default:
+            $encoding = AudioEncoding::MP3; $ext = 'mp3';
     }
+    $audioConfig = (new AudioConfig())->setAudioEncoding($encoding);
+
+    // NEW library (Client\…): needs a request object
+    // OLD library: accepts 3 args
+    if (class_exists('\Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient')) {
+        $req = (new SynthesizeSpeechRequest())
+            ->setInput($inputText)
+            ->setVoice($voice)
+            ->setAudioConfig($audioConfig);
+        $response = $client->synthesizeSpeech($req);
+    } else {
+        $response = $client->synthesizeSpeech($inputText, $voice, $audioConfig);
+    }
+
+    $audioContent = $response->getAudioContent();
+    return [$audioContent, $ext];
+}
+
 
     /** Convert "en-US" → "English (United States)". Uses PHP intl when available; otherwise a small fallback map. */
     private function languageFullFromCode(string $bcp47): string

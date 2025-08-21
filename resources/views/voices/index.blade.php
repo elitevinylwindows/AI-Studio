@@ -87,7 +87,7 @@
           <tr data-id="{{ $v->id }}"
               data-text="{{ $v->voice_text ?? '' }}"
               data-format="{{ $v->audio_format ?? 'mp3' }}">
-            <td><i class="fa-brands fa-google"></i>{{ $v->vendor }}</td>
+            <td><i class="fa-brands fa-google"></i></td> <!--{{ $v->vendor }}-->
             <td>{{ $v->language_full }}</td>
             <td>{{ $v->language_code }}</td>
             <td>{{ ucfirst(strtolower($v->gender ?? '')) }}</td>
