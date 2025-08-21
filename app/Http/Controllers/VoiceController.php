@@ -18,7 +18,7 @@ use Google\Cloud\TextToSpeech\V1\SsmlVoiceGender;
 use Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient;
 use Google\Cloud\TextToSpeech\V1\ListVoicesRequest;
 use Google\Cloud\TextToSpeech\V1\SynthesizeSpeechRequest;
-
+use Google\Auth\Credentials\ServiceAccountCredentials;
 
 class VoiceController extends Controller
 {
@@ -154,65 +154,80 @@ class VoiceController extends Controller
      * @return array{0:object,1:string} [$client, $transport]
      */
     private function buildTtsClient(): array
-    {
-        $transport = 'rest'; // avoid gRPC dependency issues
+{
+    $transport = 'rest';
 
-        // Load credentials as an ARRAY
-        $creds = null;
+    // ---- load the JSON as an array ----
+    $creds = null;
 
-        // A) Path from .env
-        if ($path = env('GOOGLE_APPLICATION_CREDENTIALS')) {
-            if (is_file($path) && is_readable($path)) {
-                $json = file_get_contents($path);
-                $creds = json_decode($json, true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new \RuntimeException('Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS: '.json_last_error_msg());
-                }
-            }
+    // A) .env absolute path
+    if ($path = env('GOOGLE_APPLICATION_CREDENTIALS')) {
+        if (is_file($path) && is_readable($path)) {
+            $json  = file_get_contents($path);
+            $creds = json_decode($json, true);
         }
-
-        // B) Fallback to storage
-        if (!$creds) {
-            $fallback = "https://studio.elitevinylwindows.com/public/keys/google-tts.json"; // for testing
-            if (is_file($fallback) && is_readable($fallback)) {
-                $json = file_get_contents($fallback);
-                $creds = json_decode($json, true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new \RuntimeException('Invalid JSON in fallback google-tts.json: '.json_last_error_msg());
-                }
-            }
-        }
-
-        // C) Inline JSON via .env (optional)
-        if (!$creds && ($inline = env('GOOGLE_APPLICATION_CREDENTIALS_JSON'))) {
-            $creds = json_decode($inline, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \RuntimeException('GOOGLE_APPLICATION_CREDENTIALS_JSON is not valid JSON: '.json_last_error_msg());
-            }
-        }
-
-        if (!$creds) {
-            // Stop instead of letting ADC run
-            throw new \RuntimeException('Google TTS credentials not found. Set GOOGLE_APPLICATION_CREDENTIALS to an absolute readable file or GOOGLE_APPLICATION_CREDENTIALS_JSON to the JSON.');
-        }
-
-        // Pick whichever class exists
-        $cls = '\Google\Cloud\TextToSpeech\V1\TextToSpeechClient';
-        if (!class_exists($cls) && class_exists('\Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient')) {
-            $cls = '\Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient';
-        }
-        if (!class_exists($cls)) {
-            throw new \RuntimeException('TextToSpeechClient class not found. Install/update google/cloud-text-to-speech and run composer dump-autoload -o.');
-        }
-
-        $client = new $cls([
-            'credentials' => $creds,
-            'transport'   => $transport,
-        ]);
-
-        return [$client, $transport];
     }
 
+    // B) main storage fallback (recommended)
+    if (!$creds) {
+        $path = base_path('storage/app/keys/google-tts.json');
+        if (is_file($path) && is_readable($path)) {
+            $json  = file_get_contents($path);
+            $creds = json_decode($json, true);
+        }
+    }
+
+    // C) public/keys fallback (only if you must; this is a **filesystem path**, not a URL)
+    if (!$creds) {
+        $path = public_path('keys/google-tts.json');
+        if (is_file($path) && is_readable($path)) {
+            $json  = file_get_contents($path);
+            $creds = json_decode($json, true);
+        }
+    }
+
+    // D) inline JSON env
+    if (!$creds && ($inline = env('GOOGLE_APPLICATION_CREDENTIALS_JSON'))) {
+        $creds = json_decode($inline, true);
+    }
+
+    // E) base64 env
+    if (!$creds && ($b64 = env('GOOGLE_APPLICATION_CREDENTIALS_B64'))) {
+        $json  = base64_decode($b64, true);
+        $creds = $json ? json_decode($json, true) : null;
+    }
+
+    if (!$creds || json_last_error() !== JSON_ERROR_NONE) {
+        throw new \RuntimeException('Google TTS credentials not found or invalid JSON.');
+    }
+    foreach (['type','client_email','private_key'] as $k) {
+        if (empty($creds[$k])) {
+            throw new \RuntimeException("Service-account JSON missing: {$k}");
+        }
+    }
+
+    // Build explicit OAuth creds (prevents UNAUTHENTICATED)
+    $scopes  = ['https://www.googleapis.com/auth/cloud-platform'];
+    $saCreds = new ServiceAccountCredentials($scopes, $creds);
+
+    // pick the available client class
+    $cls = '\Google\Cloud\TextToSpeech\V1\TextToSpeechClient';
+    if (!class_exists($cls) && class_exists('\Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient')) {
+        $cls = '\Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient';
+    }
+    if (!class_exists($cls)) {
+        throw new \RuntimeException('TextToSpeechClient class not found.');
+    }
+
+    $client = new $cls([
+        'credentials'       => $saCreds,
+        'credentialsConfig' => ['scopes' => $scopes],
+        'transport'         => $transport,
+        'apiEndpoint'       => 'texttospeech.googleapis.com',
+    ]);
+
+    return [$client, $transport];
+}
     /**
      * Synthesize speech using current credentials / transport.
      *
