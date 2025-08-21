@@ -88,8 +88,12 @@
               data-text="{{ $v->voice_text ?? '' }}"
               data-format="{{ $v->audio_format ?? 'mp3' }}">
             <td class="text-center align-middle">
-  <img src="{{ asset('icons/google.png') }}" alt="Google" style="width:20px;height:20px;vertical-align:middle;">
-</td> <!--{{ $v->vendor }}-->
+  <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white border shadow-sm"
+        style="width:36px;height:36px;">
+    <img src="{{ asset('icons/google.png') }}" alt="Google" style="width:18px;height:18px;">
+  </span>
+</td>
+ <!--{{ $v->vendor }}-->
             <td>{{ $v->language_full }}</td>
             <td>{{ $v->language_code }}</td>
             <td>{{ ucfirst(strtolower($v->gender ?? '')) }}</td>
