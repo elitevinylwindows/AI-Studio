@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "elite-studio-467320",
+  "private_key_id": "a27164185efe49f8a29415a5f5b8130b8c97c55d",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDOdMQTXrhllhg5\nSD5gWchDnIEHGreYqJ7LYgg5lyghDVsmP6OgX4nGTHeIdKE518EOnyTuzpXNKCIS\npSeKRChArLx4YpSAk1FlIj0hMb78Y/8ZnetRdnxM3DD142CeeZVOQfWOAU4IoItN\nCJop1zv5LNba9Mc+rne0aUSazyKcskxVXy7Fe4Gmz+b55BT4UCSQ90GHFF7PB/5m\nqpsdaOhqwkAycLtFz8KvyammY8hiePFNWZSc9dBBIT8v8EeTpcfnqTQNirczpAtm\n3LW5LLZoOFgvZeEYGazWvIVK6hax6m14yIPPAguIYxPhDYrwX5oR1wnRwdbwgQyi\nqABB7PizAgMBAAECggEAEo3lkJTAKge3DfAuBEG9YO9/8bqsdQXzyMp60RYtGeoA\niZZJkcr+76PapZhPDwroA5+OKv9vm2b3x54xHgN/F0TkO/DRcMwMkh66yLDBqHQi\nLn6wnHseCQL29s+O/4m6FIo9U8b5PjGTeK0FEdfmlhUPYCaEgN/JdpzJTh0Uer7V\nQstiyg5HYXu9CXTEH4pbRCrAeF+n5Axn8UlhXdIH3X2+cwGS4ivccZz3HlXR/fJE\nO7fqpwB+cz5vEv021x8wc0hGaW+iigI4EW+2RHqAGrtFz8Nulqc40IhtHT0hE9i0\nORQVm9X801o9arkJyuVhEXt/BmM8wv7EVZ1m6ycTCQKBgQD5kqJa5XF9aNoKUBOe\nkUturewa/cT58SZlOdzFzfr6P+U1pxIqKbFLkLkGDQXz9gcPZS2Qrt7DtHIXRaSS\nb+cCJ5EXUcdrDj9FzvnMvsP2iMaaI8EKnhnOqLYXzUEuATi/qZrLP+BkEYTsjqjD\nc03EXtJ1dfnnWo9wqyhGEqo3OwKBgQDTxeALf4BCBAf+PRau/qGprBp1aYKc6bDU\n0JKE2wcxggFm6vY6MQPRAe0EUvL2+yDZYZk/caxSzqPE0akR6jubdd5NjpCVGkUa\nvb8X8NXVymuCszgEC64EmUkcVcU0iYcANMVyuq+pMCmNniIGJVQib16WYJ+HZ7fC\nAsSLg/7c6QKBgQDZwIvxnPGZh0t+5gFIP+M97Xfs0O/1V+e1OHgdCixp/ifh2SSr\nLvdnRB17Xw+LnWTplNDdxQXOYXmOPpBpyEMZiSY533uMN8ETCpS/hM58IziNMpby\nyaEgw+kk+UxedGhsKfJKVjBVf0eoEozDA66doFImdEoYBtbSajPYd96WEwKBgASV\n1TsKgLFtOusTUYlqc/+jfVMrfKt/F9gTyAheYbJ9uSAMWFZ8NzPwUbx1O1ODrntm\ndJX+FRgZ50vcqkd8Bdxg2fZd7t17myFwGFIhYc/mORu0W7MiuZrZ4s5dQQ7ZJ3Ym\nrlvElQcZxtyNHvl5F3BDbw3ce7fH1B+8RZsruXn5AoGBAOo0xVZT5+TAqK94tmtX\nfhU7FpAmR9QF1UGsF1fA8A88HiNHsk3baEw2Z052A7APvvyskO+3X/D0BZW/IGvg\nVytJHHH24IQpF7y0vfz4guAPCij24pwutYk+t5AKC1cSrTaMgBPf1f6GHWsC3m1T\nDCPKbx3ihV5HyborjiCAtBGl\n-----END PRIVATE KEY-----\n",
+  "client_email": "elite-studio@elite-studio-467320.iam.gserviceaccount.com",
+  "client_id": "111519208176438123691",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/elite-studio%40elite-studio-467320.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
