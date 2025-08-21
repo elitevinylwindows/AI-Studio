@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function () {
       headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json'},
       body: JSON.stringify({
         _method: 'PUT',
-        voice_text: voiceTextEl.value,
+        voice_name: voiceTextEl.value,
         audio_format: audioFormatEl.value
       })
     });
