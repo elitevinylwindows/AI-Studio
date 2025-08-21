@@ -105,10 +105,11 @@
             <td class="text-center align-middle">
   <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-white border shadow-sm"
         style="width:36px;height:36px;">
-    <img src="{{ asset('public/icons/google.png') }}" alt="Google" style="width:18px;height:18px;">
+    <img src="{{ asset('icons/google.png') }}" alt="" style="width:18px;height:18px;">
   </span>
+  <span class="visually-hidden">{{ $v->vendor }}</span>
 </td>
- <!--{{ $v->vendor }}-->
+
             <td>{{ $v->language_full }}</td>
             <td>{{ $v->language_code }}</td>
             <td>{{ ucfirst(strtolower($v->gender ?? '')) }}</td>
