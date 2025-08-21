@@ -161,7 +161,7 @@ class VoiceController extends Controller
 
         // B) Fallback to storage
         if (!$creds) {
-            $fallback = storage_path('app/keys/google-tts.json');
+            $fallback = "https://studio.elitevinylwindows.com/public/keys/google-tts.json"; // for testing
             if (is_file($fallback) && is_readable($fallback)) {
                 $json = file_get_contents($fallback);
                 $creds = json_decode($json, true);
