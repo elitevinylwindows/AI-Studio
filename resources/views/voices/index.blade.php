@@ -87,7 +87,9 @@
           <tr data-id="{{ $v->id }}"
               data-text="{{ $v->voice_text ?? '' }}"
               data-format="{{ $v->audio_format ?? 'mp3' }}">
-            <td><i class="fa-brands fa-google"></i></td> <!--{{ $v->vendor }}-->
+            <td class="text-center align-middle">
+  <img src="{{ asset('icons/google-color.svg') }}" alt="Google" style="width:20px;height:20px;vertical-align:middle;">
+</td> <!--{{ $v->vendor }}-->
             <td>{{ $v->language_full }}</td>
             <td>{{ $v->language_code }}</td>
             <td>{{ ucfirst(strtolower($v->gender ?? '')) }}</td>
