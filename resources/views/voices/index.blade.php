@@ -93,9 +93,12 @@
             <td>{{ ucfirst(strtolower($v->gender ?? '')) }}</td>
             <td>{{ $v->voice_text }}</td>
             <td>
-              <button class="btn btn-sm btn-light btnPreview" title="Preview">
-                <i class="ti ti-player-play"></i>
-              </button>
+              <button type="button"
+  class="btn btn-sm rounded-circle bg-white border text-primary d-inline-flex align-items-center justify-content-center shadow-sm btnPreview"
+  style="width:36px;height:36px" title="Preview" aria-label="Preview">
+  <i class="ti ti-player-play"></i>
+</button>
+
               @if($v->sample_url)
                 <a href="{{ $v->sample_url }}" target="_blank" class="ms-2 small">Last sample</a>
               @endif
@@ -130,7 +133,7 @@
         <div class="modal-body">
           <input type="hidden" id="voiceId">
           <div class="mb-3">
-            <label class="form-label">Voice Text (what to say)</label>
+            <label class="form-label">Voice Name</label>
             <textarea class="form-control" id="voiceText" rows="3" placeholder="Type sample text..."></textarea>
             <div class="form-text">Only this text and format are saved on update.</div>
           </div>
