@@ -5,7 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Voice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient;
+use Illuminate\Support\Facades\DB;
+
+// Do NOT import a specific TextToSpeechClient class here.
+// We dynamically resolve the correct class inside buildTtsClient().
+
 use Google\Cloud\TextToSpeech\V1\AudioEncoding;
 use Google\Cloud\TextToSpeech\V1\SynthesisInput;
 use Google\Cloud\TextToSpeech\V1\VoiceSelectionParams;
@@ -34,10 +38,10 @@ class VoiceController extends Controller
         $voices = $q->orderBy('language_full')->orderBy('voice_name')->get();
 
         // Distinct filter values
-        $vendors      = Voice::select('vendor')->distinct()->pluck('vendor');
-        $languages    = Voice::select('language_full')->distinct()->orderBy('language_full')->pluck('language_full');
-        $genders      = Voice::select('gender')->distinct()->pluck('gender');
-        $formats      = ['mp3', 'ogg', 'wav'];
+        $vendors   = Voice::select('vendor')->distinct()->pluck('vendor');
+        $languages = Voice::select('language_full')->distinct()->orderBy('language_full')->pluck('language_full');
+        $genders   = Voice::select('gender')->distinct()->pluck('gender');
+        $formats   = ['mp3', 'ogg', 'wav'];
 
         return view('voices.index', compact('voices', 'vendors', 'languages', 'genders', 'formats'));
     }
@@ -90,37 +94,121 @@ class VoiceController extends Controller
         return response()->json(['url' => $publicUrl]);
     }
 
-    // --- helpers ---
-
-    private function ttsClient(): TextToSpeechClient
+    public function sync(Request $request)
     {
-        // Prefer path from env; fallback to storage; force REST to avoid gRPC requirement
-        $path = env('GOOGLE_APPLICATION_CREDENTIALS');
-        if ($path && is_file($path)) {
-            $creds = json_decode(file_get_contents($path), true);
-            return new TextToSpeechClient(['credentials' => $creds, 'transport' => 'rest']);
-        }
-        $fallback = storage_path('app/keys/google-tts.json');
-        if (is_file($fallback)) {
-            $creds = json_decode(file_get_contents($fallback), true);
-            return new TextToSpeechClient(['credentials' => $creds, 'transport' => 'rest']);
-        }
-        // If you set GOOGLE_APPLICATION_CREDENTIALS_JSON with the raw JSON:
-        if ($json = env('GOOGLE_APPLICATION_CREDENTIALS_JSON')) {
-            $creds = json_decode($json, true);
-            return new TextToSpeechClient(['credentials' => $creds, 'transport' => 'rest']);
+        [$client, $transport] = $this->buildTtsClient();
+        $resp = $client->listVoices();
+
+        $count = 0;
+
+        foreach ($resp->getVoices() as $gVoice) {
+            $name   = $gVoice->getName();                                // e.g. "en-US-Neural2-A"
+            $gender = SsmlVoiceGender::name($gVoice->getSsmlGender());   // "MALE"/"FEMALE"/"NEUTRAL"
+            $gender = $gender ? ucfirst(strtolower($gender)) : null;
+
+            foreach ($gVoice->getLanguageCodes() as $code) {             // e.g. "en-US"
+                $full = $this->languageFullFromCode($code);              // e.g. "English (United States)"
+
+                // Upsert by (voice_id + language_code)
+                Voice::updateOrCreate(
+                    ['voice_id' => $name, 'language_code' => $code],
+                    [
+                        'vendor'        => 'Google',
+                        'language'      => $code,
+                        'language_full' => $full,
+                        'voice_name'    => $name,
+                        'gender'        => $gender,
+                        'voice_engine'  => 'Neural',
+                        // keep existing editable fields if set
+                        'audio_format'  => DB::raw("COALESCE(audio_format, 'mp3')"),
+                        'status'        => 'Active',
+                    ]
+                );
+                $count++;
+            }
         }
 
-        // As a last resort, try ADC (may fail if not configured)
-        return new TextToSpeechClient(['transport' => 'rest']);
+        return back()->with('success', "Synced $count voice entries via $transport.");
+    }
+
+    // ---------- Helpers ----------
+
+    /**
+     * Build a Google TTS client that:
+     * - ALWAYS uses explicit credentials (no ADC),
+     * - supports both namespaces (V1\* and V1\Client\*),
+     * - forces REST transport.
+     *
+     * @return array{0:object,1:string} [$client, $transport]
+     */
+    private function buildTtsClient(): array
+    {
+        $transport = 'rest'; // avoid gRPC dependency issues
+
+        // Load credentials as an ARRAY
+        $creds = null;
+
+        // A) Path from .env
+        if ($path = env('GOOGLE_APPLICATION_CREDENTIALS')) {
+            if (is_file($path) && is_readable($path)) {
+                $json = file_get_contents($path);
+                $creds = json_decode($json, true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new \RuntimeException('Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS: '.json_last_error_msg());
+                }
+            }
+        }
+
+        // B) Fallback to storage
+        if (!$creds) {
+            $fallback = storage_path('app/keys/google-tts.json');
+            if (is_file($fallback) && is_readable($fallback)) {
+                $json = file_get_contents($fallback);
+                $creds = json_decode($json, true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new \RuntimeException('Invalid JSON in fallback google-tts.json: '.json_last_error_msg());
+                }
+            }
+        }
+
+        // C) Inline JSON via .env (optional)
+        if (!$creds && ($inline = env('GOOGLE_APPLICATION_CREDENTIALS_JSON'))) {
+            $creds = json_decode($inline, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \RuntimeException('GOOGLE_APPLICATION_CREDENTIALS_JSON is not valid JSON: '.json_last_error_msg());
+            }
+        }
+
+        if (!$creds) {
+            // Stop instead of letting ADC run
+            throw new \RuntimeException('Google TTS credentials not found. Set GOOGLE_APPLICATION_CREDENTIALS to an absolute readable file or GOOGLE_APPLICATION_CREDENTIALS_JSON to the JSON.');
+        }
+
+        // Pick whichever class exists
+        $cls = '\Google\Cloud\TextToSpeech\V1\TextToSpeechClient';
+        if (!class_exists($cls) && class_exists('\Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient')) {
+            $cls = '\Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient';
+        }
+        if (!class_exists($cls)) {
+            throw new \RuntimeException('TextToSpeechClient class not found. Install/update google/cloud-text-to-speech and run composer dump-autoload -o.');
+        }
+
+        $client = new $cls([
+            'credentials' => $creds,
+            'transport'   => $transport,
+        ]);
+
+        return [$client, $transport];
     }
 
     /**
+     * Synthesize speech using current credentials / transport.
+     *
      * @return array{0:string,1:string} [binary audio, file extension]
      */
     private function ttsSynthesize(string $text, string $languageCode, string $voiceName, string $format): array
     {
-        $client = $this->ttsClient();
+        [$client] = $this->buildTtsClient();
 
         $inputText = (new SynthesisInput())->setText($text);
 
@@ -146,82 +234,17 @@ class VoiceController extends Controller
         return [$audioContent, $ext];
     }
 
-    public function sync(Request $request)
-    {
-        [$client, $transport] = $this->buildTtsClient();
-        $resp = $client->listVoices();
-
-        $count = 0;
-
-        foreach ($resp->getVoices() as $gVoice) {
-            $name   = $gVoice->getName();                       // e.g. "en-US-Neural2-A"
-            $gender = SsmlVoiceGender::name($gVoice->getSsmlGender()); // "MALE"/"FEMALE"/"NEUTRAL"
-            $gender = $gender ? ucfirst(strtolower($gender)) : null;
-
-            foreach ($gVoice->getLanguageCodes() as $code) {    // e.g. "en-US"
-                $full = $this->languageFullFromCode($code);     // e.g. "English (United States)"
-
-                // Upsert by (voice_id + language_code)
-                Voice::updateOrCreate(
-                    ['voice_id' => $name, 'language_code' => $code],
-                    [
-                        'vendor'         => 'Google',
-                        'language'       => $code,          // keep short if you want
-                        'language_full'  => $full,
-                        'voice_name'     => $name,
-                        'gender'         => $gender,
-                        'voice_engine'   => 'Neural',
-                        // keep existing editable fields if set
-                        'audio_format'   => \DB::raw("COALESCE(audio_format, 'mp3')"),
-                        'status'         => 'Active',
-                    ]
-                );
-                $count++;
-            }
-        }
-
-        return back()->with('success', "Synced $count voice entries via $transport.");
-    }
-
-    /** Build a client that works on Windows/shared hosting without ADC */
-    private function buildTtsClient(): array
-    {
-        $transport = 'rest'; // avoid gRPC dependency headaches
-        $path = env('GOOGLE_APPLICATION_CREDENTIALS');
-
-        if ($path && is_file($path) && is_readable($path)) {
-            $creds = json_decode(file_get_contents($path), true);
-            return [new TextToSpeechClient(['credentials' => $creds, 'transport' => $transport]), $transport];
-        }
-        $fallback = storage_path('app/keys/google-tts.json');
-        if (is_file($fallback) && is_readable($fallback)) {
-            $creds = json_decode(file_get_contents($fallback), true);
-            return [new TextToSpeechClient(['credentials' => $creds, 'transport' => $transport]), $transport];
-        }
-        if ($json = env('GOOGLE_APPLICATION_CREDENTIALS_JSON')) {
-            $creds = json_decode($json, true);
-            return [new TextToSpeechClient(['credentials' => $creds, 'transport' => $transport]), $transport];
-        }
-        // Last resort uses ADC (may fail if not configured)
-        return [new TextToSpeechClient(['transport' => $transport]), $transport];
-    }
-
-    /** Convert "en-US" → "English (United States)". Requires PHP intl; falls back cleanly. */
+    /** Convert "en-US" → "English (United States)". Uses PHP intl when available; otherwise a small fallback map. */
     private function languageFullFromCode(string $bcp47): string
     {
-        // Prefer PHP intl if available
         if (class_exists(\Locale::class)) {
-            // Normalize separator and components
             $norm = str_replace('_', '-', $bcp47);
-            $lang = \Locale::getPrimaryLanguage($norm); // "en"
-            $reg  = \Locale::getRegion($norm);          // "US" (may be "")
             $dispLang = \Locale::getDisplayLanguage($norm, 'en'); // "English"
+            $reg      = \Locale::getRegion($norm);                // "US" (may be "")
             $dispReg  = $reg ? \Locale::getDisplayRegion('und_'.$reg, 'en') : '';
-
             return $dispReg ? "{$dispLang} ({$dispReg})" : $dispLang;
         }
 
-        // Minimal fallback map for when intl is missing
         static $fallback = [
             'en' => 'English', 'en-US' => 'English (United States)', 'en-GB' => 'English (United Kingdom)',
             'es' => 'Spanish', 'es-ES' => 'Spanish (Spain)', 'es-MX' => 'Spanish (Mexico)',
@@ -233,7 +256,6 @@ class VoiceController extends Controller
             'ko' => 'Korean', 'ko-KR' => 'Korean (South Korea)',
             'zh' => 'Chinese', 'zh-CN' => 'Chinese (China)', 'zh-TW' => 'Chinese (Taiwan)', 'zh-HK' => 'Chinese (Hong Kong)',
         ];
-        return $fallback[$bcp47] ?? $fallback[substr($bcp47,0,2)] ?? $bcp47;
+        return $fallback[$bcp47] ?? $fallback[substr($bcp47, 0, 2)] ?? $bcp47;
     }
-
 }
