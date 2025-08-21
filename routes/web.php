@@ -308,6 +308,7 @@ Route::impersonate();
 //TTS
 Route::get('/text-to-speech', [TextToSpeechController::class, 'index'])->name('text_to_speech.index');
 Route::post('/text-to-speech/generate', [TextToSpeechController::class, 'generate'])->name('text_to_speech.generate');
+Route::get('/text-to-speech/voices', [TextToSpeechController::class, 'voicesByLanguage'])->name('text_to_speech.voices'); // AJAX
 
 
 //File Manager
