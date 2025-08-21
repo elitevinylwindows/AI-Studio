@@ -30,58 +30,53 @@
         {{-- <a href="{{ route('voices.sync') }}" class="btn btn-primary">Sync Voices</a> --}}
     </div>
 
- {{-- Filters Row --}}
-<div class="row g-2 mb-3" id="voicesFilters">
-  <div class="col-12 col-md-2">
-    <label class="form-label mb-1">Vendor</label>
-    <select id="filterVendor" class="form-select form-select-sm">
-      <option value="">All</option>
-      @foreach($vendors as $v)
-        <option value="{{ $v }}">{{ $v }}</option>
-      @endforeach
-    </select>
-  </div>
-
-  <div class="col-12 col-md-3">
-    <label class="form-label mb-1">Language</label>
-    <select id="filterLanguage" class="form-select form-select-sm">
-      <option value="">All</option>
-      @foreach($languages as $l)
-        <option value="{{ $l }}">{{ $l }}</option>
-      @endforeach
-    </select>
-  </div>
-
-  <div class="col-12 col-md-2">
-    <label class="form-label mb-1">Code</label>
-    <select id="filterCode" class="form-select form-select-sm" disabled>
-      <option value="">All</option>
-    </select>
-  </div>
-
-  <div class="col-12 col-md-2">
-    <label class="form-label mb-1">Gender</label>
-    <select id="filterGender" class="form-select form-select-sm">
-      <option value="">All</option>
-      @foreach($genders as $g)
-        @if($g)
+    {{-- Filters Row --}}
+    <div class="row g-2 mb-3">
+      <div class="col-12 col-md-2">
+        <label class="form-label">Vendor</label>
+        <select id="filterVendor" class="form-select">
+          <option value="">All</option>
+          @foreach($vendors as $v)
+          <option value="{{ $v }}">{{ $v }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Language</label>
+        <select id="filterLanguage" class="form-select">
+          <option value="">All</option>
+          @foreach($languages as $l)
+          <option value="{{ $l }}">{{ $l }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <label class="form-label">Code</label>
+        <select id="filterCode" class="form-select" disabled>
+          <option value="">All</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <label class="form-label">Gender</label>
+        <select id="filterGender" class="form-select">
+          <option value="">All</option>
+          @foreach($genders as $g)
+          @if($g)
           <option value="{{ $g }}">{{ ucfirst(strtolower($g)) }}</option>
-        @endif
-      @endforeach
-    </select>
-  </div>
-
-  <div class="col-12 col-md-3">
-    <label class="form-label mb-1">Format</label>
-    <select id="filterFormat" class="form-select form-select-sm">
-      <option value="">All</option>
-      @foreach($formats as $f)
-        <option value="{{ $f }}">{{ strtoupper($f) }}</option>
-      @endforeach
-    </select>
-  </div>
-</div>
-
+          @endif
+          @endforeach
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <label class="form-label">Format</label>
+        <select id="filterFormat" class="form-select">
+          <option value="">All</option>
+          @foreach($formats as $f)
+          <option value="{{ $f }}">{{ strtoupper($f) }}</option>
+          @endforeach
+        </select>
+      </div>
+    </div>
 
     <div class="table-responsive">
       <table id="voicesTable" class="table table-hover align-middle w-100">
@@ -109,7 +104,6 @@
   </span>
   <span class="visually-hidden">{{ $v->vendor }}</span>
 </td>
-
             <td>{{ $v->language_full }}</td>
             <td>{{ $v->language_code }}</td>
             <td>{{ ucfirst(strtolower($v->gender ?? '')) }}</td>
