@@ -91,7 +91,7 @@
             <td>{{ $v->language_full }}</td>
             <td>{{ $v->language_code }}</td>
             <td>{{ ucfirst(strtolower($v->gender ?? '')) }}</td>
-            <td>{{ $v->voice_name }}</td>
+            <td>{{ $v->voice_text }}</td>
             <td>
               <button class="btn btn-sm btn-light btnPreview" title="Preview">
                 <i class="ti ti-player-play"></i>
@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function () {
       headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json'},
       body: JSON.stringify({
         _method: 'PUT',
-        voice_name: voiceTextEl.value,
+        voice_text: voiceTextEl.value,
         audio_format: audioFormatEl.value
       })
     });
