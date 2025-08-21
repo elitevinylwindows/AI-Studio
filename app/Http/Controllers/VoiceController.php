@@ -15,6 +15,8 @@ use Google\Cloud\TextToSpeech\V1\SynthesisInput;
 use Google\Cloud\TextToSpeech\V1\VoiceSelectionParams;
 use Google\Cloud\TextToSpeech\V1\AudioConfig;
 use Google\Cloud\TextToSpeech\V1\SsmlVoiceGender;
+use Google\Cloud\TextToSpeech\V1\Client\TextToSpeechClient;
+use Google\Cloud\TextToSpeech\V1\ListVoicesRequest;
 
 class VoiceController extends Controller
 {
@@ -97,7 +99,9 @@ class VoiceController extends Controller
     public function sync(Request $request)
     {
         [$client, $transport] = $this->buildTtsClient();
-        $resp = $client->listVoices(['languageCode' => 'en-US']);
+
+        $request = new ListVoicesRequest(); 
+        $resp = $client->listVoices($request);
 
         $count = 0;
 
