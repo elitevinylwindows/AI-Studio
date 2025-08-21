@@ -2,11 +2,21 @@
 
 @section('page-title', 'Voices')
 
+@section('breadcrumb')
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb mb-4"> {{-- mb-4 adds the gap under the breadcrumb --}}
+    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Voices</li>
+  </ol>
+</nav>
+@endsection
+
 @push('styles')
 <link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-2.0.7/datatables.min.css">
 @endpush
-<div class="mb-4"> </div>
+
 @section('content')
+<div class="mb-4"></div>
 <div class="card shadow-sm border-0">
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-3">
