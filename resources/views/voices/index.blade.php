@@ -1,1119 +1,752 @@
 @extends('layouts.app')
 
-@section('page-title', 'Voice Studio')
+@section('page-title', 'Voice Bank')
 
 @section('breadcrumb')
 <nav aria-label="breadcrumb">
   <ol class="breadcrumb mb-4">
     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Voice Studio</li>
+    <li class="breadcrumb-item active" aria-current="page">Voice Bank</li>
   </ol>
 </nav>
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="https://cdn.datatables.net/v/bs5/dt-2.0.7/datatables.min.css">
 <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Mono:wght@400;700&display=swap');
 
     :root {
-        --vs-bg: #0c0c10;
-        --vs-panel: #16161d;
-        --vs-surface: #1a1a22;
-        --vs-border: #232330;
-        --vs-hover: #1e1e2a;
-        --vs-accent: #6c5ce7;
-        --vs-accent-glow: rgba(108, 92, 231, 0.25);
-        --vs-accent-light: #a29bfe;
-        --vs-success: #00cec9;
-        --vs-success-glow: rgba(0, 206, 201, 0.2);
-        --vs-danger: #ff6b6b;
-        --vs-danger-glow: rgba(255, 107, 107, 0.15);
-        --vs-warning: #feca57;
-        --vs-text: #eef0f6;
-        --vs-text-sec: #8b8da3;
-        --vs-text-muted: #555670;
+        --vb-bg: #0c0c10;
+        --vb-panel: #16161d;
+        --vb-border: #232330;
+        --vb-hover: #1e1e2a;
+        --vb-accent: #6c5ce7;
+        --vb-accent-glow: rgba(108, 92, 231, 0.25);
+        --vb-accent-light: #a29bfe;
+        --vb-success: #00cec9;
+        --vb-success-glow: rgba(0, 206, 201, 0.2);
+        --vb-danger: #ff6b6b;
+        --vb-text: #eef0f6;
+        --vb-text-sec: #8b8da3;
+        --vb-text-muted: #555670;
     }
 
-    .voice-studio {
+    .voice-bank {
         font-family: 'DM Sans', sans-serif;
-        background: var(--vs-bg);
+        background: var(--vb-bg);
         min-height: 100vh;
-        color: var(--vs-text);
+        color: var(--vb-text);
+        padding-bottom: 60px;
     }
 
-    /* ── Top Bar ── */
-    .studio-topbar {
-        background: var(--vs-panel);
-        border-bottom: 1px solid var(--vs-border);
-        padding: 0 24px;
-        height: 52px;
+    /* ── Header ── */
+    .vb-header {
+        padding: 28px 32px 0;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        position: sticky;
-        top: 0;
-        z-index: 100;
+        gap: 16px;
+        flex-wrap: wrap;
     }
 
-    .topbar-logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
+    .vb-title {
+        font-size: 1.5rem;
         font-weight: 700;
-        font-size: 1rem;
+        letter-spacing: -0.03em;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 0 4px;
     }
 
-    .topbar-logo .ring {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
+    .vb-title .ring {
+        width: 38px; height: 38px; border-radius: 10px;
         background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        box-shadow: 0 3px 14px var(--vs-accent-glow);
-    }
-
-    /* ── 3-Column Layout ── */
-    .studio-grid {
-        display: grid;
-        grid-template-columns: 320px 1fr 300px;
-        min-height: calc(100vh - 52px);
-    }
-
-    .panel {
-        background: var(--vs-panel);
-        border-right: 1px solid var(--vs-border);
-        overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: var(--vs-border) transparent;
-    }
-
-    .panel:last-child {
-        border-right: none;
-        border-left: 1px solid var(--vs-border);
-    }
-
-    .panel-section {
-        padding: 18px;
-        border-bottom: 1px solid var(--vs-border);
-    }
-
-    .section-label {
-        font-family: 'Space Mono', monospace;
-        font-size: 0.65rem;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--vs-text-muted);
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 7px;
-    }
-
-    .section-label .dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: var(--vs-accent);
-    }
-
-    /* ── Form Controls ── */
-    .ctrl-input,
-    .ctrl-textarea,
-    .ctrl-select {
-        width: 100%;
-        background: var(--vs-bg);
-        border: 1px solid var(--vs-border);
-        border-radius: 9px;
-        padding: 9px 12px;
-        color: var(--vs-text);
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.84rem;
-        outline: none;
-        transition: border-color 0.15s, box-shadow 0.15s;
-    }
-
-    .ctrl-input:focus, .ctrl-textarea:focus, .ctrl-select:focus {
-        border-color: var(--vs-accent);
-        box-shadow: 0 0 0 3px var(--vs-accent-glow);
-    }
-
-    .ctrl-textarea {
-        resize: vertical;
-        min-height: 120px;
-        line-height: 1.6;
-    }
-
-    .ctrl-select {
-        cursor: pointer;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b8da3' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 12px center;
-        padding-right: 32px;
-    }
-
-    .ctrl-select option { background: var(--vs-panel); color: var(--vs-text); }
-
-    .ctrl-label {
-        display: block;
-        font-size: 0.78rem;
-        font-weight: 500;
-        color: var(--vs-text-sec);
-        margin-bottom: 5px;
-    }
-
-    .ctrl-group { margin-bottom: 12px; }
-
-    .char-count {
-        font-family: 'Space Mono', monospace;
-        font-size: 0.68rem;
-        color: var(--vs-text-muted);
-        text-align: right;
-        margin-top: 4px;
-    }
-    .char-count.warn { color: var(--vs-warning); }
-    .char-count.over { color: var(--vs-danger); }
-
-    /* ── Voice Cards ── */
-    .voice-card {
-        background: var(--vs-bg);
-        border: 1px solid var(--vs-border);
-        border-radius: 10px;
-        padding: 11px 13px;
-        cursor: pointer;
-        transition: all 0.15s;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 6px;
-    }
-
-    .voice-card:hover { border-color: rgba(108,92,231,0.4); background: var(--vs-hover); }
-
-    .voice-card.selected {
-        border-color: var(--vs-accent);
-        background: rgba(108,92,231,0.08);
-        box-shadow: 0 0 0 2px var(--vs-accent-glow);
-    }
-
-    .voice-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        flex-shrink: 0;
-        color: #fff;
-    }
-
-    .voice-avatar.male { background: linear-gradient(135deg, #0984e3, #6c5ce7); }
-    .voice-avatar.female { background: linear-gradient(135deg, #e84393, #fd79a8); }
-    .voice-avatar.neutral { background: linear-gradient(135deg, #636e72, #b2bec3); }
-
-    .voice-info { flex: 1; min-width: 0; }
-
-    .voice-name {
-        font-weight: 600;
-        font-size: 0.84rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .voice-meta {
-        font-size: 0.7rem;
-        color: var(--vs-text-muted);
-        display: flex;
-        gap: 6px;
-        align-items: center;
-    }
-
-    .voice-preview-btn {
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        border: 1px solid var(--vs-border);
-        background: var(--vs-panel);
-        color: var(--vs-text-sec);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 11px;
-        transition: all 0.15s;
-        flex-shrink: 0;
-    }
-
-    .voice-preview-btn:hover { border-color: var(--vs-accent); color: var(--vs-accent); }
-
-    #voiceList .loading-msg {
-        text-align: center;
-        padding: 20px;
-        font-size: 0.82rem;
-        color: var(--vs-text-muted);
-    }
-
-    #voiceList .empty-msg {
-        text-align: center;
-        padding: 24px 12px;
-        font-size: 0.82rem;
-        color: var(--vs-text-muted);
-    }
-
-    /* ── Center Stage ── */
-    .stage {
-        background: var(--vs-bg);
-        display: flex;
-        flex-direction: column;
-    }
-
-    .stage-canvas {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .stage-canvas::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background:
-            radial-gradient(circle at 30% 40%, rgba(108,92,231,0.05) 0%, transparent 50%),
-            radial-gradient(circle at 70% 60%, rgba(0,206,201,0.03) 0%, transparent 50%);
-        pointer-events: none;
-    }
-
-    .avatar-zone {
-        width: 260px;
-        height: 300px;
-        border-radius: 20px;
-        border: 2px dashed var(--vs-border);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 14px;
-        cursor: pointer;
-        transition: all 0.25s;
-        position: relative;
-        z-index: 1;
-        background: rgba(22,22,29,0.5);
-        backdrop-filter: blur(8px);
-    }
-
-    .avatar-zone:hover {
-        border-color: var(--vs-accent);
-        background: rgba(108,92,231,0.04);
-        transform: translateY(-2px);
-    }
-
-    .avatar-zone .zone-icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 28px;
-        box-shadow: 0 8px 28px var(--vs-accent-glow);
-    }
-
-    .avatar-zone .zone-text { font-size: 0.86rem; color: var(--vs-text-sec); font-weight: 500; }
-    .avatar-zone .zone-sub { font-size: 0.72rem; color: var(--vs-text-muted); text-align: center; max-width: 180px; line-height: 1.4; }
-
-    .avatar-preview-img {
-        width: 260px;
-        height: 300px;
-        border-radius: 20px;
-        object-fit: cover;
-        border: 2px solid var(--vs-border);
-        box-shadow: 0 12px 48px rgba(0,0,0,0.4);
-        position: relative;
-        z-index: 1;
-        display: none;
-        cursor: pointer;
-    }
-
-    /* ── Waveform + Transport ── */
-    .stage-controls {
-        background: var(--vs-panel);
-        border-top: 1px solid var(--vs-border);
-        padding: 16px 24px;
-    }
-
-    .waveform-box {
-        width: 100%;
-        height: 48px;
-        background: var(--vs-bg);
-        border-radius: 10px;
-        margin-bottom: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        position: relative;
-    }
-
-    .waveform-bars {
-        display: flex;
-        align-items: center;
-        gap: 2px;
-        height: 100%;
-        padding: 6px 10px;
-        display: none;
-    }
-
-    .waveform-bar {
-        width: 3px;
-        background: var(--vs-accent);
-        border-radius: 2px;
-        opacity: 0.3;
-        transition: height 0.1s;
-    }
-
-    .waveform-bar.active { opacity: 1; }
-
-    .waveform-placeholder {
-        font-size: 0.76rem;
-        color: var(--vs-text-muted);
-        font-family: 'Space Mono', monospace;
-    }
-
-    .transport {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-    }
-
-    .transport-btn {
-        width: 38px;
-        height: 38px;
-        border-radius: 50%;
-        border: 1px solid var(--vs-border);
-        background: var(--vs-bg);
-        color: var(--vs-text-sec);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 15px;
-        transition: all 0.15s;
-    }
-
-    .transport-btn:hover { border-color: var(--vs-accent); color: var(--vs-accent); }
-
-    .transport-btn.play {
-        width: 46px;
-        height: 46px;
-        background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-        border: none;
-        color: #fff;
+        display: inline-flex; align-items: center; justify-content: center;
         font-size: 18px;
-        box-shadow: 0 4px 20px var(--vs-accent-glow);
+        box-shadow: 0 4px 18px var(--vb-accent-glow);
     }
 
-    .transport-btn.play:hover { transform: scale(1.06); }
+    .vb-subtitle { font-size: 0.84rem; color: var(--vb-text-sec); margin-left: 50px; }
 
-    .transport-time {
-        font-family: 'Space Mono', monospace;
-        font-size: 0.74rem;
-        color: var(--vs-text-muted);
-        min-width: 52px;
+    .vb-stats { display: flex; gap: 10px; align-items: center; }
+
+    .vb-stat {
+        background: var(--vb-panel); border: 1px solid var(--vb-border);
+        border-radius: 10px; padding: 8px 16px; text-align: center; min-width: 80px;
     }
 
-    .transport-time.right { text-align: right; }
+    .vb-stat .n { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-weight: 700; color: var(--vb-accent-light); }
+    .vb-stat .l { font-size: 0.66rem; color: var(--vb-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
-    /* ── Right Panel ── */
-    .slider-group { margin-bottom: 14px; }
-
-    .slider-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 6px;
+    .btn-sync {
+        background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: #fff; border: none;
+        border-radius: 10px; padding: 10px 20px;
+        font-family: 'DM Sans', sans-serif; font-size: 0.84rem; font-weight: 600;
+        cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+        transition: all 0.15s; box-shadow: 0 4px 16px var(--vb-accent-glow);
     }
 
-    .slider-lbl { font-size: 0.78rem; color: var(--vs-text-sec); font-weight: 500; }
+    .btn-sync:hover { transform: translateY(-1px); box-shadow: 0 6px 22px var(--vb-accent-glow); }
 
-    .slider-val {
-        font-family: 'Space Mono', monospace;
-        font-size: 0.7rem;
-        color: var(--vs-accent-light);
-        background: var(--vs-accent-glow);
-        padding: 2px 8px;
-        border-radius: 5px;
+    /* ── Filters ── */
+    .vb-filters {
+        margin: 20px 32px 0; background: var(--vb-panel);
+        border: 1px solid var(--vb-border); border-radius: 14px;
+        padding: 16px 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
     }
 
-    input[type="range"] {
-        -webkit-appearance: none;
-        width: 100%;
-        height: 3px;
-        background: var(--vs-border);
-        border-radius: 3px;
-        outline: none;
+    .fg { flex: 1; min-width: 130px; }
+
+    .fg-label {
+        display: block; font-family: 'Space Mono', monospace;
+        font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em;
+        color: var(--vb-text-muted); margin-bottom: 5px;
     }
 
-    input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        background: var(--vs-accent);
-        cursor: pointer;
-        box-shadow: 0 2px 6px var(--vs-accent-glow);
+    .fg-select, .fg-search {
+        width: 100%; background: var(--vb-bg); border: 1px solid var(--vb-border);
+        border-radius: 8px; padding: 8px 12px; color: var(--vb-text);
+        font-family: 'DM Sans', sans-serif; font-size: 0.82rem; outline: none; transition: all 0.15s;
     }
 
-    /* Emotion Tags */
-    .tag-grid { display: flex; flex-wrap: wrap; gap: 5px; }
-
-    .emotion-tag {
-        padding: 5px 12px;
-        border-radius: 16px;
-        border: 1px solid var(--vs-border);
-        background: var(--vs-bg);
-        color: var(--vs-text-sec);
-        font-size: 0.74rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-        user-select: none;
+    .fg-select { appearance: none; cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238b8da3' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
     }
 
-    .emotion-tag:hover { border-color: var(--vs-accent); color: var(--vs-text); }
+    .fg-select option { background: var(--vb-panel); color: var(--vb-text); }
 
-    .emotion-tag.active {
-        background: var(--vs-accent);
-        border-color: var(--vs-accent);
-        color: #fff;
-        box-shadow: 0 2px 8px var(--vs-accent-glow);
+    .fg-select:focus, .fg-search:focus { border-color: var(--vb-accent); box-shadow: 0 0 0 3px var(--vb-accent-glow); }
+
+    .fg-search {
+        padding-left: 34px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%23555670' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: 10px center;
     }
 
-    /* Action Buttons */
-    .action-stack { display: flex; flex-direction: column; gap: 7px; }
+    .fg-clear {
+        background: var(--vb-bg); border: 1px solid var(--vb-border); border-radius: 8px;
+        padding: 8px 14px; color: var(--vb-text-sec); font-size: 0.8rem;
+        cursor: pointer; transition: all 0.15s; white-space: nowrap; font-family: 'DM Sans', sans-serif;
+    }
+    .fg-clear:hover { border-color: var(--vb-danger); color: var(--vb-danger); }
 
-    .act-btn {
-        width: 100%;
-        padding: 10px;
-        border-radius: 9px;
-        border: none;
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.84rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.15s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 7px;
+    /* ── Active pills ── */
+    .active-pills { margin: 10px 32px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: rgba(108,92,231,0.1); border: 1px solid rgba(108,92,231,0.3);
+        border-radius: 7px; padding: 3px 10px; font-size: 0.74rem; color: var(--vb-accent-light);
+        animation: fadeIn 0.2s ease;
     }
 
-    .act-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .pill .x { cursor: pointer; opacity: 0.6; font-size: 13px; }
+    .pill .x:hover { opacity: 1; }
 
-    .act-btn.generate {
-        background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-        color: #fff;
-        box-shadow: 0 4px 18px var(--vs-accent-glow);
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+    /* ── Table Wrapper ── */
+    .vb-table-wrap {
+        margin: 16px 32px 0; background: var(--vb-panel);
+        border: 1px solid var(--vb-border); border-radius: 14px; overflow: hidden;
     }
 
-    .act-btn.generate:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 24px var(--vs-accent-glow); }
+    /* DataTables overrides */
+    .vb-table-wrap .dataTables_wrapper .dataTables_length,
+    .vb-table-wrap .dataTables_wrapper .dataTables_filter { display: none; }
 
-    .act-btn.save {
-        background: var(--vs-bg);
-        color: var(--vs-success);
-        border: 1px solid rgba(0,206,201,0.3);
+    .vb-table-wrap .dataTables_wrapper .dataTables_info {
+        color: var(--vb-text-muted); font-size: 0.76rem; padding: 10px 20px;
     }
 
-    .act-btn.save:hover:not(:disabled) { background: var(--vs-success-glow); border-color: var(--vs-success); }
+    .vb-table-wrap .dataTables_wrapper .dataTables_paginate { padding: 10px 20px; }
 
-    .act-btn.delete {
-        background: var(--vs-bg);
-        color: var(--vs-danger);
-        border: 1px solid rgba(255,107,107,0.3);
+    .vb-table-wrap .dataTables_wrapper .dataTables_paginate .paginate_button {
+        background: var(--vb-bg) !important; border: 1px solid var(--vb-border) !important;
+        border-radius: 7px !important; color: var(--vb-text-sec) !important;
+        font-size: 0.78rem; padding: 5px 10px !important; margin: 0 2px; transition: all 0.15s;
     }
 
-    .act-btn.delete:hover:not(:disabled) { background: var(--vs-danger-glow); border-color: var(--vs-danger); }
-
-    .act-btn.ghost {
-        background: var(--vs-bg);
-        color: var(--vs-text-sec);
-        border: 1px solid var(--vs-border);
+    .vb-table-wrap .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: var(--vb-hover) !important; border-color: var(--vb-accent) !important; color: var(--vb-text) !important;
     }
 
-    .act-btn.ghost:hover:not(:disabled) { border-color: var(--vs-accent); color: var(--vs-text); }
-
-    /* Status */
-    .status-bar {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        padding: 8px 12px;
-        border-radius: 8px;
-        background: var(--vs-bg);
-        border: 1px solid var(--vs-border);
-        font-size: 0.76rem;
-        color: var(--vs-text-sec);
+    .vb-table-wrap .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: var(--vb-accent) !important; border-color: var(--vb-accent) !important;
+        color: #fff !important; box-shadow: 0 2px 10px var(--vb-accent-glow);
     }
 
-    .status-dot {
-        width: 7px; height: 7px; border-radius: 50%;
-        background: var(--vs-text-muted);
+    .vb-table-wrap .dataTables_wrapper .dataTables_paginate .paginate_button.disabled { opacity: 0.3; }
+
+    #voicesTable { width: 100% !important; border-collapse: separate; border-spacing: 0; }
+
+    #voicesTable thead th {
+        background: var(--vb-bg); color: var(--vb-text-muted);
+        font-family: 'Space Mono', monospace; font-size: 0.66rem;
+        text-transform: uppercase; letter-spacing: 0.1em;
+        padding: 12px 14px; border-bottom: 1px solid var(--vb-border); font-weight: 400; white-space: nowrap;
+    }
+    #voicesTable thead th:first-child { padding-left: 20px; }
+    #voicesTable thead th:last-child { padding-right: 20px; }
+
+    #voicesTable tbody tr { transition: background 0.12s; }
+    #voicesTable tbody tr:hover { background: var(--vb-hover); }
+    #voicesTable tbody tr.playing-row { background: rgba(108,92,231,0.06); }
+
+    #voicesTable tbody td {
+        padding: 10px 14px; border-bottom: 1px solid rgba(35,35,48,0.5);
+        color: var(--vb-text); font-size: 0.84rem; vertical-align: middle;
+    }
+    #voicesTable tbody td:first-child { padding-left: 20px; }
+    #voicesTable tbody td:last-child { padding-right: 20px; }
+    #voicesTable tbody tr:last-child td { border-bottom: none; }
+
+    /* Cell styles */
+    .vendor-badge {
+        display: inline-flex; align-items: center; gap: 7px;
+        background: var(--vb-bg); border: 1px solid var(--vb-border); border-radius: 7px;
+        padding: 4px 10px 4px 7px; font-size: 0.76rem; font-weight: 500;
+    }
+    .vendor-badge img { width: 15px; height: 15px; border-radius: 3px; }
+
+    .lang-cell { display: flex; align-items: center; gap: 7px; }
+    .lang-flag { font-size: 1.05rem; }
+    .lang-name { font-weight: 500; font-size: 0.82rem; }
+    .lang-code { font-family: 'Space Mono', monospace; font-size: 0.68rem; color: var(--vb-text-muted); }
+
+    .gender-dot { display: inline-flex; align-items: center; gap: 5px; font-size: 0.82rem; }
+    .gender-dot::before { content: ''; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .gender-dot.male::before { background: #0984e3; box-shadow: 0 0 5px rgba(9,132,227,0.4); }
+    .gender-dot.female::before { background: #e84393; box-shadow: 0 0 5px rgba(232,67,147,0.4); }
+    .gender-dot.neutral::before { background: #636e72; }
+
+    .voice-cell { font-weight: 600; }
+    .voice-cell .sub { display: block; font-size: 0.68rem; font-weight: 400; color: var(--vb-text-muted); font-family: 'Space Mono', monospace; margin-top: 1px; }
+
+    .fmt-badge {
+        font-family: 'Space Mono', monospace; font-size: 0.66rem; padding: 3px 9px;
+        border-radius: 5px; background: var(--vb-bg); border: 1px solid var(--vb-border);
+        color: var(--vb-text-sec); text-transform: uppercase; letter-spacing: 0.05em;
     }
 
-    .status-dot.ready { background: var(--vs-success); box-shadow: 0 0 6px var(--vs-success-glow); }
-    .status-dot.processing { background: var(--vs-warning); animation: pulse 1.2s infinite; }
-    .status-dot.error { background: var(--vs-danger); }
+    .prev-btn {
+        width: 34px; height: 34px; border-radius: 50%;
+        border: 1px solid var(--vb-border); background: var(--vb-bg);
+        color: var(--vb-text-sec); display: inline-flex; align-items: center; justify-content: center;
+        cursor: pointer; font-size: 13px; transition: all 0.15s;
+    }
+    .prev-btn:hover { border-color: var(--vb-accent); color: var(--vb-accent); background: var(--vb-accent-glow); }
+    .prev-btn.playing { background: var(--vb-accent); border-color: var(--vb-accent); color: #fff; box-shadow: 0 0 14px var(--vb-accent-glow); }
 
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+    .edit-btn {
+        background: var(--vb-bg); border: 1px solid var(--vb-border); border-radius: 7px;
+        padding: 5px 12px; color: var(--vb-text-sec); font-family: 'DM Sans', sans-serif;
+        font-size: 0.76rem; font-weight: 500; cursor: pointer; transition: all 0.15s;
+        display: inline-flex; align-items: center; gap: 5px;
+    }
+    .edit-btn:hover { border-color: var(--vb-accent); color: var(--vb-accent-light); }
 
-    /* Hidden */
-    #ttsPlayer { display: none; }
+    /* ── Inline Player ── */
+    .inline-player {
+        margin: 0 32px; background: var(--vb-panel);
+        border: 1px solid var(--vb-border); border-radius: 0 0 14px 14px; border-top: none;
+        padding: 12px 20px; display: none; align-items: center; gap: 14px;
+    }
+    .inline-player.visible { display: flex; }
 
-    /* Scrollbar */
-    .panel::-webkit-scrollbar { width: 4px; }
-    .panel::-webkit-scrollbar-track { background: transparent; }
-    .panel::-webkit-scrollbar-thumb { background: var(--vs-border); border-radius: 4px; }
+    .ip-info { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+    .ip-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; }
+    .ip-name { font-weight: 600; font-size: 0.82rem; }
+    .ip-meta { font-size: 0.7rem; color: var(--vb-text-muted); }
 
-    /* Responsive */
-    @media (max-width: 1100px) {
-        .studio-grid { grid-template-columns: 1fr; }
-        .stage { min-height: 360px; }
+    .ip-bar { flex: 1; height: 3px; background: var(--vb-border); border-radius: 3px; overflow: hidden; cursor: pointer; }
+    .ip-fill { height: 100%; background: var(--vb-accent); border-radius: 3px; width: 0%; transition: width 0.1s linear; }
+
+    .ip-time { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--vb-text-muted); white-space: nowrap; }
+
+    .ip-close {
+        width: 26px; height: 26px; border-radius: 50%;
+        border: 1px solid var(--vb-border); background: none;
+        color: var(--vb-text-muted); display: flex; align-items: center; justify-content: center;
+        cursor: pointer; font-size: 13px; transition: all 0.15s;
+    }
+    .ip-close:hover { border-color: var(--vb-danger); color: var(--vb-danger); }
+
+    /* ── Edit Modal ── */
+    .modal-dark .modal-content {
+        background: var(--vb-panel); border: 1px solid var(--vb-border);
+        border-radius: 16px; color: var(--vb-text);
+    }
+    .modal-dark .modal-header { border-bottom: 1px solid var(--vb-border); padding: 18px 22px; }
+    .modal-dark .modal-title { font-weight: 700; font-size: 1.05rem; }
+    .modal-dark .btn-close { filter: invert(1) brightness(0.7); }
+    .modal-dark .modal-body { padding: 22px; }
+    .modal-dark .modal-footer { border-top: 1px solid var(--vb-border); padding: 14px 22px; }
+
+    .modal-dark .form-label { font-size: 0.78rem; font-weight: 500; color: var(--vb-text-sec); margin-bottom: 5px; }
+
+    .modal-dark .form-control,
+    .modal-dark .form-select {
+        background: var(--vb-bg); border: 1px solid var(--vb-border); border-radius: 9px;
+        color: var(--vb-text); padding: 9px 12px; font-family: 'DM Sans', sans-serif; font-size: 0.86rem;
+    }
+    .modal-dark .form-control:focus, .modal-dark .form-select:focus {
+        border-color: var(--vb-accent); box-shadow: 0 0 0 3px var(--vb-accent-glow);
+    }
+    .modal-dark .form-text { color: var(--vb-text-muted); font-size: 0.72rem; }
+
+    .modal-btn-cancel {
+        background: var(--vb-bg); border: 1px solid var(--vb-border); color: var(--vb-text-sec);
+        border-radius: 9px; padding: 8px 18px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer;
+    }
+    .modal-btn-save {
+        background: linear-gradient(135deg, #6c5ce7, #a29bfe); border: none; color: #fff;
+        border-radius: 9px; padding: 8px 22px; font-family: 'DM Sans', sans-serif; font-weight: 600; cursor: pointer;
+        box-shadow: 0 3px 14px var(--vb-accent-glow);
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--vb-border); border-radius: 4px; }
+
+    @media (max-width: 768px) {
+        .vb-header, .vb-filters, .vb-table-wrap, .inline-player, .active-pills { margin-left: 12px; margin-right: 12px; }
+        .vb-filters { flex-direction: column; }
+        .fg { min-width: 100%; }
     }
 </style>
 @endpush
 
 @section('content')
-<div class="voice-studio">
+<div class="voice-bank">
 
-    {{-- ── Top Bar ── --}}
-    <div class="studio-topbar">
-        <div class="topbar-logo">
-            <span class="ring">🎙</span>
-            <span>Voice Studio</span>
+    {{-- ── Header ── --}}
+    <div class="vb-header">
+        <div>
+            <h1 class="vb-title"><span class="ring">🎙</span> Voice Bank</h1>
+            <div class="vb-subtitle">Browse, preview, and manage all synced TTS voices</div>
         </div>
-        <div></div>
+        <div class="vb-stats">
+            <div class="vb-stat">
+                <div class="n">{{ $voices->count() }}</div>
+                <div class="l">Voices</div>
+            </div>
+            <div class="vb-stat">
+                <div class="n">{{ $languages->count() }}</div>
+                <div class="l">Languages</div>
+            </div>
+            <form method="POST" action="{{ route('voices.sync') }}" style="display:inline;">
+                @csrf
+                <button type="submit" class="btn-sync">↻ Sync Voices</button>
+            </form>
+        </div>
     </div>
 
-    <form id="ttsForm" action="{{ route('text_to_speech.generate') }}" method="POST">
-        @csrf
+    {{-- ── Filters ── --}}
+    <div class="vb-filters">
+        <div class="fg" style="flex:1.5">
+            <label class="fg-label">Search</label>
+            <input type="text" id="fSearch" class="fg-search" placeholder="Search voices...">
+        </div>
+        <div class="fg">
+            <label class="fg-label">Vendor</label>
+            <select id="fVendor" class="fg-select">
+                <option value="">All</option>
+                @foreach($vendors as $v)<option value="{{ $v }}">{{ $v }}</option>@endforeach
+            </select>
+        </div>
+        <div class="fg">
+            <label class="fg-label">Language</label>
+            <select id="fLang" class="fg-select">
+                <option value="">All</option>
+                @foreach($languages as $l)<option value="{{ $l }}">{{ $l }}</option>@endforeach
+            </select>
+        </div>
+        <div class="fg">
+            <label class="fg-label">Code</label>
+            <select id="fCode" class="fg-select" disabled>
+                <option value="">All</option>
+            </select>
+        </div>
+        <div class="fg">
+            <label class="fg-label">Gender</label>
+            <select id="fGender" class="fg-select">
+                <option value="">All</option>
+                @foreach($genders as $g)
+                    @if($g)<option value="{{ $g }}">{{ ucfirst(strtolower($g)) }}</option>@endif
+                @endforeach
+            </select>
+        </div>
+        <div class="fg">
+            <label class="fg-label">Format</label>
+            <select id="fFormat" class="fg-select">
+                <option value="">All</option>
+                @foreach($formats as $f)<option value="{{ $f }}">{{ strtoupper($f) }}</option>@endforeach
+            </select>
+        </div>
+        <div class="fg" style="flex:0 0 auto;">
+            <label class="fg-label">&nbsp;</label>
+            <button type="button" id="fClear" class="fg-clear">✕ Clear</button>
+        </div>
+    </div>
 
-        <div class="studio-grid">
+    <div class="active-pills" id="pills"></div>
 
-            {{-- ═══════════════════════════════════════
-                 LEFT PANEL: Script + Language + Voice
-                 ═══════════════════════════════════════ --}}
-            <div class="panel">
+    {{-- ── Table ── --}}
+    <div class="vb-table-wrap">
+        <div class="table-responsive">
+            <table id="voicesTable" class="table table-hover align-middle w-100 mb-0">
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>Language</th>
+                        <th>Gender</th>
+                        <th>Voice</th>
+                        <th style="width:60px;text-align:center;">Play</th>
+                        <th>Format</th>
+                        <th style="width:70px;text-align:center;">Edit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php
+                        $flagMap = [
+                            'en-US'=>'🇺🇸','en-GB'=>'🇬🇧','en-AU'=>'🇦🇺','en-IN'=>'🇮🇳',
+                            'es-MX'=>'🇲🇽','es-ES'=>'🇪🇸','fr-FR'=>'🇫🇷','fr-CA'=>'🇨🇦',
+                            'de-DE'=>'🇩🇪','pt-BR'=>'🇧🇷','pt-PT'=>'🇵🇹','ja-JP'=>'🇯🇵',
+                            'ko-KR'=>'🇰🇷','zh-CN'=>'🇨🇳','zh-TW'=>'🇹🇼','hi-IN'=>'🇮🇳',
+                            'ar-XA'=>'🇸🇦','it-IT'=>'🇮🇹','nl-NL'=>'🇳🇱','ru-RU'=>'🇷🇺',
+                            'pl-PL'=>'🇵🇱','sv-SE'=>'🇸🇪','tr-TR'=>'🇹🇷','th-TH'=>'🇹🇭',
+                            'vi-VN'=>'🇻🇳','id-ID'=>'🇮🇩','fil-PH'=>'🇵🇭','uk-UA'=>'🇺🇦',
+                            'cs-CZ'=>'🇨🇿','el-GR'=>'🇬🇷','he-IL'=>'🇮🇱','af-ZA'=>'🇿🇦',
+                        ];
+                    @endphp
+                    @foreach($voices as $v)
+                    @php
+                        $g = strtolower($v->gender ?? 'neutral');
+                        $flag = $flagMap[$v->language_code] ?? '🌐';
+                    @endphp
+                    <tr data-id="{{ $v->id }}"
+                        data-text="{{ $v->voice_text ?? '' }}"
+                        data-format="{{ $v->audio_format ?? 'mp3' }}"
+                        data-gender="{{ $g }}">
+                        <td>
+                            <span class="vendor-badge">
+                                <img src="{{ asset('public/icons/google.png') }}" alt="">
+                                {{ $v->vendor }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="lang-cell">
+                                <span class="lang-flag">{{ $flag }}</span>
+                                <div>
+                                    <div class="lang-name">{{ $v->language_full }}</div>
+                                    <div class="lang-code">{{ $v->language_code }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="gender-dot {{ $g }}">{{ ucfirst($g) }}</span></td>
+                        <td>
+                            <div class="voice-cell">
+                                {{ $v->voice_text ?: $v->voice_name }}
+                                <span class="sub">{{ $v->voice_name }}</span>
+                            </div>
+                        </td>
+                        <td style="text-align:center;">
+                            <button type="button" class="prev-btn btnPreview" title="Preview">▶</button>
+                        </td>
+                        <td><span class="fmt-badge">{{ strtoupper($v->audio_format ?? 'mp3') }}</span></td>
+                        <td style="text-align:center;">
+                            <button type="button" class="edit-btn btnEdit">✎</button>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-                {{-- Script --}}
-                <div class="panel-section">
-                    <div class="section-label"><span class="dot"></span> Script</div>
+    {{-- Inline Player --}}
+    <div class="inline-player" id="inlinePlayer">
+        <div class="ip-info">
+            <div class="ip-avatar" id="ipAvatar" style="background:linear-gradient(135deg,#0984e3,#6c5ce7);">🎤</div>
+            <div>
+                <div class="ip-name" id="ipName">—</div>
+                <div class="ip-meta" id="ipMeta">—</div>
+            </div>
+        </div>
+        <div class="ip-bar" id="ipBar"><div class="ip-fill" id="ipFill"></div></div>
+        <div class="ip-time"><span id="ipTime">0:00</span> / <span id="ipDur">0:00</span></div>
+        <button type="button" class="ip-close" id="ipClose">✕</button>
+    </div>
 
-                    <div class="ctrl-group">
-                        <label class="ctrl-label" for="audio_name">File Name</label>
-                        <input type="text" name="audio_name" id="audio_name" class="ctrl-input" placeholder="e.g. welcome_v2">
-                    </div>
+    <audio id="audioPlayer"></audio>
+</div>
 
-                    <div class="ctrl-group">
-                        <label class="ctrl-label" for="text">Script Text</label>
-                        <textarea name="text" id="text" class="ctrl-textarea" placeholder="Type or paste your script here..." required></textarea>
-                        <div class="char-count" id="charCount">0 / 5,000</div>
-                    </div>
+{{-- Edit Modal --}}
+<div class="modal fade modal-dark" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="editForm">
+                @csrf
+                @method('PUT')
+                <div class="modal-header">
+                    <h5 class="modal-title">✎ Edit Voice</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-
-                {{-- Language (from DB) --}}
-                <div class="panel-section">
-                    <div class="section-label"><span class="dot"></span> Language</div>
-
-                    <div class="ctrl-group">
-                        <select name="language" id="languageSelect" class="ctrl-select" required>
-                            @foreach($languages as $lang)
-                                <option value="{{ $lang->language_code }}"
-                                    {{ $lang->language_code === $selectedCode ? 'selected' : '' }}>
-                                    {{ $lang->language_full }} ({{ $lang->language_code }})
-                                </option>
-                            @endforeach
+                <div class="modal-body">
+                    <input type="hidden" id="editId">
+                    <div class="mb-3">
+                        <label class="form-label">Display Name / Sample Text</label>
+                        <textarea class="form-control" id="editText" rows="3" placeholder="Sample text for this voice..."></textarea>
+                        <div class="form-text">This text is used for preview and display.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Output Format</label>
+                        <select id="editFormat" class="form-select">
+                            <option value="mp3">MP3</option>
+                            <option value="ogg">OGG</option>
+                            <option value="wav">WAV</option>
                         </select>
                     </div>
                 </div>
-
-                {{-- Voice (from DB, updates via AJAX) --}}
-                <div class="panel-section">
-                    <div class="section-label"><span class="dot"></span> Voice</div>
-                    <input type="hidden" name="voice" id="voiceInput" value="{{ optional($voices->first())->voice_name ?? '' }}">
-
-                    <div id="voiceList">
-                        @forelse($voices as $v)
-                            @php $g = strtolower($v->gender ?? 'neutral'); @endphp
-                            <div class="voice-card {{ $loop->first ? 'selected' : '' }}"
-                                 data-voice="{{ $v->voice_name }}"
-                                 data-gender="{{ $g }}">
-                                <div class="voice-avatar {{ $g }}">🎤</div>
-                                <div class="voice-info">
-                                    <div class="voice-name">{{ $v->voice_text ?: $v->voice_name }}</div>
-                                    <div class="voice-meta">
-                                        <span>{{ ucfirst($g) }}</span> ·
-                                        <span>{{ strtoupper($v->audio_format ?? 'mp3') }}</span> ·
-                                        <span>{{ $v->language_code }}</span>
-                                    </div>
-                                </div>
-                                <button type="button" class="voice-preview-btn" title="Preview">▶</button>
-                            </div>
-                        @empty
-                            <div class="empty-msg">No curated voices for this language.<br>Select another language or visit <a href="{{ route('voices.index') }}" style="color:var(--vs-accent-light)">Voice Bank</a> to set up voices.</div>
-                        @endforelse
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="modal-btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="modal-btn-save" id="editSaveBtn">Save Changes</button>
                 </div>
-            </div>
-
-            {{-- ═══════════════════════════════════════
-                 CENTER STAGE: Preview + Waveform
-                 ═══════════════════════════════════════ --}}
-            <div class="stage">
-                <div class="stage-canvas">
-                    <div class="avatar-zone" id="avatarZone">
-                        <div class="zone-icon">👤</div>
-                        <div class="zone-text">Choose an Avatar</div>
-                        <div class="zone-sub">Upload an image or pick from your avatar library</div>
-                    </div>
-                    <img id="avatarImg" class="avatar-preview-img" alt="Avatar">
-                </div>
-
-                <div class="stage-controls">
-                    <div class="waveform-box">
-                        <span class="waveform-placeholder" id="waveformPlaceholder">Generate audio to see waveform</span>
-                        <div class="waveform-bars" id="waveformBars"></div>
-                    </div>
-                    <div class="transport">
-                        <span class="transport-time" id="elapsed">0:00</span>
-                        <button type="button" class="transport-btn" id="rewindBtn">⏪</button>
-                        <button type="button" class="transport-btn play" id="playPauseBtn">▶</button>
-                        <button type="button" class="transport-btn" id="ffwdBtn">⏩</button>
-                        <span class="transport-time right" id="duration">0:00</span>
-                    </div>
-                </div>
-
-                <audio id="ttsPlayer"></audio>
-            </div>
-
-            {{-- ═══════════════════════════════════════
-                 RIGHT PANEL: Tuning + Actions
-                 ═══════════════════════════════════════ --}}
-            <div class="panel">
-
-                {{-- Emotion --}}
-                <div class="panel-section">
-                    <div class="section-label"><span class="dot"></span> Emotion & Style</div>
-                    <input type="hidden" name="emotion" id="emotionInput" value="neutral">
-                    <div class="tag-grid">
-                        <span class="emotion-tag active" data-v="neutral">😐 Neutral</span>
-                        <span class="emotion-tag" data-v="happy">😊 Happy</span>
-                        <span class="emotion-tag" data-v="sad">😢 Sad</span>
-                        <span class="emotion-tag" data-v="excited">🤩 Excited</span>
-                        <span class="emotion-tag" data-v="angry">😠 Angry</span>
-                        <span class="emotion-tag" data-v="calm">😌 Calm</span>
-                        <span class="emotion-tag" data-v="whisper">🤫 Whisper</span>
-                        <span class="emotion-tag" data-v="serious">🧐 Serious</span>
-                        <span class="emotion-tag" data-v="friendly">🤗 Friendly</span>
-                    </div>
-                </div>
-
-                {{-- Voice Tuning --}}
-                <div class="panel-section">
-                    <div class="section-label"><span class="dot"></span> Voice Tuning</div>
-
-                    <div class="slider-group">
-                        <div class="slider-header">
-                            <span class="slider-lbl">Speed</span>
-                            <span class="slider-val" id="speedVal">1.0x</span>
-                        </div>
-                        <input type="range" name="speed" id="speed" min="0.5" max="2.0" step="0.1" value="1.0">
-                    </div>
-
-                    <div class="slider-group">
-                        <div class="slider-header">
-                            <span class="slider-lbl">Pitch</span>
-                            <span class="slider-val" id="pitchVal">0</span>
-                        </div>
-                        <input type="range" name="pitch" id="pitch" min="-10" max="10" step="1" value="0">
-                    </div>
-
-                    <div class="slider-group">
-                        <div class="slider-header">
-                            <span class="slider-lbl">Volume Gain</span>
-                            <span class="slider-val" id="volVal">0 dB</span>
-                        </div>
-                        <input type="range" name="volume_gain" id="volume_gain" min="-6" max="6" step="1" value="0">
-                    </div>
-                </div>
-
-                {{-- Status --}}
-                <div class="panel-section">
-                    <div class="section-label"><span class="dot"></span> Status</div>
-                    <div class="status-bar" id="statusBar">
-                        <span class="status-dot" id="statusDot"></span>
-                        <span id="statusText">Ready</span>
-                    </div>
-                </div>
-
-                {{-- Actions --}}
-                <div class="panel-section">
-                    <div class="section-label"><span class="dot"></span> Actions</div>
-                    <div class="action-stack">
-                        <button type="button" id="generateBtn" class="act-btn generate">⚡ Generate Audio</button>
-                        <button type="button" id="saveBtn" class="act-btn save" disabled>💾 Save to File Manager</button>
-                        <button type="button" id="deleteBtn" class="act-btn delete" disabled>🗑 Discard</button>
-                        <button type="button" id="downloadBtn" class="act-btn ghost" disabled>⬇ Download</button>
-                    </div>
-                </div>
-            </div>
-
+            </form>
         </div>
-    </form>
+    </div>
 </div>
 @endsection
 
 @push('scripts')
+<script src="https://cdn.datatables.net/v/bs5/dt-2.0.7/datatables.min.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener('DOMContentLoaded', function () {
 
-    /* ── State ── */
-    let previewUrl = null;
-    let isPlaying = false;
-
-    /* ── Refs ── */
-    const form         = document.getElementById('ttsForm');
-    const player       = document.getElementById('ttsPlayer');
-    const generateBtn  = document.getElementById('generateBtn');
-    const deleteBtn    = document.getElementById('deleteBtn');
-    const saveBtn      = document.getElementById('saveBtn');
-    const downloadBtn  = document.getElementById('downloadBtn');
-    const playPauseBtn = document.getElementById('playPauseBtn');
-    const rewindBtn    = document.getElementById('rewindBtn');
-    const ffwdBtn      = document.getElementById('ffwdBtn');
-    const textArea     = document.getElementById('text');
-    const charCount    = document.getElementById('charCount');
-    const statusDot    = document.getElementById('statusDot');
-    const statusText   = document.getElementById('statusText');
-    const waveformBars = document.getElementById('waveformBars');
-    const waveformPlaceholder = document.getElementById('waveformPlaceholder');
-    const elapsed      = document.getElementById('elapsed');
-    const duration     = document.getElementById('duration');
-    const langSelect   = document.getElementById('languageSelect');
-    const voiceInput   = document.getElementById('voiceInput');
-    const voiceList    = document.getElementById('voiceList');
-
-    /* ── Char count ── */
-    textArea?.addEventListener('input', function () {
-        const len = this.value.length;
-        charCount.textContent = `${len.toLocaleString()} / 5,000`;
-        charCount.className = 'char-count' + (len > 4500 ? ' over' : len > 3500 ? ' warn' : '');
-    });
-
-    /* ═══════════════════════════════════════
-       LANGUAGE → VOICE (AJAX dependent dropdown)
-       ═══════════════════════════════════════ */
-    langSelect?.addEventListener('change', function () {
-        const code = this.value;
-        voiceList.innerHTML = '<div class="loading-msg">Loading voices...</div>';
-        voiceInput.value = '';
-
-        fetch(`{{ route('text_to_speech.voices_by_language') }}?code=${encodeURIComponent(code)}`)
-            .then(r => r.json())
-            .then(voices => {
-                voiceList.innerHTML = '';
-
-                if (!voices.length) {
-                    voiceList.innerHTML = '<div class="empty-msg">No curated voices for this language.<br>Visit <a href="{{ route("voices.index") }}" style="color:var(--vs-accent-light)">Voice Bank</a> to set up voices.</div>';
-                    return;
-                }
-
-                voices.forEach((v, i) => {
-                    const g = (v.gender || 'neutral').toLowerCase();
-                    const card = document.createElement('div');
-                    card.className = 'voice-card' + (i === 0 ? ' selected' : '');
-                    card.dataset.voice = v.voice_name;
-                    card.dataset.gender = g;
-                    card.innerHTML = `
-                        <div class="voice-avatar ${g}">🎤</div>
-                        <div class="voice-info">
-                            <div class="voice-name">${v.voice_text || v.voice_name}</div>
-                            <div class="voice-meta">
-                                <span>${g.charAt(0).toUpperCase() + g.slice(1)}</span> ·
-                                <span>${(v.audio_format || 'mp3').toUpperCase()}</span> ·
-                                <span>${v.language_code}</span>
-                            </div>
-                        </div>
-                        <button type="button" class="voice-preview-btn" title="Preview">▶</button>`;
-                    voiceList.appendChild(card);
-                });
-
-                // Auto-select first
-                voiceInput.value = voices[0].voice_name;
-                bindVoiceCards();
-            })
-            .catch(() => {
-                voiceList.innerHTML = '<div class="empty-msg">Failed to load voices.</div>';
-            });
-    });
-
-    /* ── Voice card click / preview binding ── */
-    function bindVoiceCards() {
-        voiceList.querySelectorAll('.voice-card').forEach(card => {
-            card.addEventListener('click', function (e) {
-                if (e.target.closest('.voice-preview-btn')) return;
-                voiceList.querySelectorAll('.voice-card').forEach(c => c.classList.remove('selected'));
-                this.classList.add('selected');
-                voiceInput.value = this.dataset.voice;
-            });
-        });
-
-        voiceList.querySelectorAll('.voice-preview-btn').forEach(btn => {
-            btn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                const card = this.closest('.voice-card');
-                if (!card) return;
-                // Quick TTS preview: generate with minimal text
-                const previewText = textArea.value.trim().substring(0, 100) || 'Hello, this is a voice preview.';
-                this.textContent = '⏳';
-
-                const fd = new FormData();
-                fd.append('_token', form.querySelector('[name="_token"]').value);
-                fd.append('text', previewText);
-                fd.append('language', langSelect.value);
-                fd.append('voice', card.dataset.voice);
-
-                fetch(form.action, { method: 'POST', body: fd })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.url) {
-                            player.src = data.url;
-                            player.play().catch(() => {});
-                        }
-                        this.textContent = '▶';
-                    })
-                    .catch(() => { this.textContent = '▶'; });
-            });
-        });
-    }
-
-    // Initial binding for server-rendered cards
-    bindVoiceCards();
-
-    /* ── Emotion tags ── */
-    document.querySelectorAll('.emotion-tag').forEach(tag => {
-        tag.addEventListener('click', function () {
-            document.querySelectorAll('.emotion-tag').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById('emotionInput').value = this.dataset.v;
-        });
-    });
-
-    /* ── Sliders ── */
-    document.getElementById('speed')?.addEventListener('input', function () {
-        document.getElementById('speedVal').textContent = parseFloat(this.value).toFixed(1) + 'x';
-    });
-    document.getElementById('pitch')?.addEventListener('input', function () {
-        document.getElementById('pitchVal').textContent = this.value;
-    });
-    document.getElementById('volume_gain')?.addEventListener('input', function () {
-        document.getElementById('volVal').textContent = this.value + ' dB';
-    });
-
-    /* ── Helpers ── */
-    function setStatus(state, msg) {
-        statusDot.className = 'status-dot ' + state;
-        statusText.textContent = msg;
-    }
-
-    function fmtTime(s) {
-        const m = Math.floor(s / 60);
-        const sec = Math.floor(s % 60);
-        return `${m}:${sec.toString().padStart(2, '0')}`;
-    }
-
-    function buildWaveform() {
-        waveformBars.innerHTML = '';
-        for (let i = 0; i < 70; i++) {
-            const b = document.createElement('div');
-            b.className = 'waveform-bar';
-            b.style.height = (Math.random() * 26 + 4) + 'px';
-            waveformBars.appendChild(b);
+    /* ── DataTable ── */
+    const table = new DataTable('#voicesTable', {
+        order: [[1, 'asc']],
+        pageLength: 25,
+        stateSave: true,
+        language: {
+            info: 'Showing _START_ – _END_ of _TOTAL_ voices',
+            infoEmpty: 'No voices found',
+            infoFiltered: '(filtered from _MAX_)',
+            emptyTable: 'No voices synced yet. Click "Sync Voices" to fetch from Google.',
+            zeroRecords: 'No matching voices',
         }
-        waveformBars.style.display = 'flex';
-        waveformPlaceholder.style.display = 'none';
+    });
+
+    /* ── Filter refs ── */
+    const fSearch = document.getElementById('fSearch');
+    const fVendor = document.getElementById('fVendor');
+    const fLang   = document.getElementById('fLang');
+    const fCode   = document.getElementById('fCode');
+    const fGender = document.getElementById('fGender');
+    const fFormat = document.getElementById('fFormat');
+    const fClear  = document.getElementById('fClear');
+    const pills   = document.getElementById('pills');
+
+    function applyFilters() {
+        table.search(fSearch.value || '');
+        table.column(0).search(fVendor.value || '', true, false);
+        table.column(1).search(fCode.value || fLang.value || '', true, false);
+        table.column(2).search(fGender.value || '', true, false);
+        table.column(5).search((fFormat.value || '').toUpperCase(), true, false);
+        table.draw();
+        renderPills();
     }
 
-    let waveInt = null;
-    function startWaveAnim() {
-        const bars = waveformBars.querySelectorAll('.waveform-bar');
-        waveInt = setInterval(() => {
-            bars.forEach(b => {
-                b.style.height = (Math.random() * 28 + 4) + 'px';
-                b.classList.toggle('active', Math.random() > 0.3);
+    function renderPills() {
+        const active = [];
+        if (fSearch.value) active.push({ k: 'search', l: `"${fSearch.value}"`, fn: () => { fSearch.value = ''; } });
+        if (fVendor.value) active.push({ k: 'vendor', l: fVendor.value, fn: () => { fVendor.value = ''; } });
+        if (fLang.value) active.push({ k: 'lang', l: fLang.value, fn: () => { fLang.value = ''; fCode.innerHTML = '<option value="">All</option>'; fCode.disabled = true; } });
+        if (fCode.value) active.push({ k: 'code', l: fCode.value, fn: () => { fCode.value = ''; } });
+        if (fGender.value) active.push({ k: 'gender', l: fGender.value, fn: () => { fGender.value = ''; } });
+        if (fFormat.value) active.push({ k: 'format', l: fFormat.value.toUpperCase(), fn: () => { fFormat.value = ''; } });
+
+        pills.innerHTML = '';
+        active.forEach(a => {
+            const el = document.createElement('span');
+            el.className = 'pill';
+            el.innerHTML = `${a.l} <span class="x">✕</span>`;
+            el.querySelector('.x').addEventListener('click', () => { a.fn(); applyFilters(); });
+            pills.appendChild(el);
+        });
+    }
+
+    fSearch.addEventListener('input', applyFilters);
+    [fVendor, fGender, fFormat].forEach(el => el.addEventListener('change', applyFilters));
+
+    /* Language → Code dependency (calls VoiceController@codes) */
+    fLang.addEventListener('change', async function () {
+        fCode.innerHTML = '<option value="">All</option>';
+        fCode.disabled = true;
+        if (this.value) {
+            try {
+                const res = await fetch(`{{ route('voices.codes') }}?language_full=${encodeURIComponent(this.value)}`);
+                const codes = await res.json();
+                codes.forEach(c => {
+                    const o = document.createElement('option');
+                    o.value = c; o.textContent = c;
+                    fCode.appendChild(o);
+                });
+                fCode.disabled = false;
+            } catch (e) { console.error(e); }
+        }
+        applyFilters();
+    });
+
+    fCode.addEventListener('change', applyFilters);
+
+    fClear.addEventListener('click', () => {
+        fSearch.value = ''; fVendor.value = ''; fLang.value = '';
+        fCode.innerHTML = '<option value="">All</option>'; fCode.disabled = true;
+        fGender.value = ''; fFormat.value = '';
+        applyFilters();
+    });
+
+    /* ── Audio Player ── */
+    const audio     = document.getElementById('audioPlayer');
+    const ipEl      = document.getElementById('inlinePlayer');
+    const ipName    = document.getElementById('ipName');
+    const ipMeta    = document.getElementById('ipMeta');
+    const ipAvatar  = document.getElementById('ipAvatar');
+    const ipTime    = document.getElementById('ipTime');
+    const ipDur     = document.getElementById('ipDur');
+    const ipFill    = document.getElementById('ipFill');
+    const ipBar     = document.getElementById('ipBar');
+    const ipClose   = document.getElementById('ipClose');
+    let curBtn      = null;
+
+    function fmt(s) { return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`; }
+
+    audio.addEventListener('timeupdate', () => {
+        ipTime.textContent = fmt(audio.currentTime);
+        if (audio.duration) ipFill.style.width = (audio.currentTime / audio.duration * 100) + '%';
+    });
+    audio.addEventListener('loadedmetadata', () => { ipDur.textContent = fmt(audio.duration); });
+    audio.addEventListener('ended', () => {
+        if (curBtn) { curBtn.classList.remove('playing'); curBtn.textContent = '▶'; curBtn.closest('tr')?.classList.remove('playing-row'); }
+        curBtn = null; ipFill.style.width = '0%';
+    });
+
+    ipBar.addEventListener('click', function (e) {
+        if (!audio.duration) return;
+        audio.currentTime = (e.clientX - this.getBoundingClientRect().left) / this.offsetWidth * audio.duration;
+    });
+
+    ipClose.addEventListener('click', () => {
+        audio.pause(); audio.src = '';
+        ipEl.classList.remove('visible');
+        if (curBtn) { curBtn.classList.remove('playing'); curBtn.textContent = '▶'; curBtn.closest('tr')?.classList.remove('playing-row'); }
+        curBtn = null;
+    });
+
+    /* ── Preview (delegated — survives DataTable pagination) ── */
+    document.getElementById('voicesTable').addEventListener('click', async function (e) {
+        const btn = e.target.closest('.btnPreview');
+        if (!btn) return;
+
+        const tr = btn.closest('tr');
+        const id = tr.dataset.id;
+        const gender = tr.dataset.gender || 'neutral';
+
+        if (curBtn && curBtn !== btn) {
+            curBtn.classList.remove('playing'); curBtn.textContent = '▶';
+            curBtn.closest('tr')?.classList.remove('playing-row');
+        }
+
+        btn.classList.add('playing'); btn.textContent = '⏳'; tr.classList.add('playing-row');
+        curBtn = btn;
+
+        const name = tr.querySelector('.voice-cell')?.textContent.trim().split('\n')[0] || '—';
+        const lang = tr.querySelector('.lang-name')?.textContent || '';
+        const code = tr.querySelector('.lang-code')?.textContent || '';
+        ipName.textContent = name;
+        ipMeta.textContent = `${lang} · ${code}`;
+
+        const grads = { male: 'linear-gradient(135deg,#0984e3,#6c5ce7)', female: 'linear-gradient(135deg,#e84393,#fd79a8)', neutral: 'linear-gradient(135deg,#636e72,#b2bec3)' };
+        ipAvatar.style.background = grads[gender] || grads.neutral;
+
+        ipFill.style.width = '0%'; ipTime.textContent = '0:00'; ipDur.textContent = '0:00';
+        ipEl.classList.add('visible');
+
+        try {
+            /* Calls VoiceController@preview */
+            const res = await fetch(`{{ url('tts/voices') }}/${id}/preview`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
             });
-        }, 120);
-    }
-    function stopWaveAnim() {
-        clearInterval(waveInt);
-        waveformBars.querySelectorAll('.waveform-bar').forEach(b => b.classList.remove('active'));
-    }
+            const data = await res.json();
 
-    /* ── Player events ── */
-    player.addEventListener('timeupdate', () => { elapsed.textContent = fmtTime(player.currentTime); });
-    player.addEventListener('loadedmetadata', () => { duration.textContent = fmtTime(player.duration); });
-    player.addEventListener('play', () => { isPlaying = true; playPauseBtn.innerHTML = '⏸'; startWaveAnim(); });
-    player.addEventListener('pause', () => { isPlaying = false; playPauseBtn.innerHTML = '▶'; stopWaveAnim(); });
-    player.addEventListener('ended', () => { isPlaying = false; playPauseBtn.innerHTML = '▶'; stopWaveAnim(); });
-
-    playPauseBtn?.addEventListener('click', () => {
-        if (!previewUrl) return;
-        isPlaying ? player.pause() : player.play().catch(() => {});
-    });
-    rewindBtn?.addEventListener('click', () => { player.currentTime = Math.max(0, player.currentTime - 5); });
-    ffwdBtn?.addEventListener('click', () => { player.currentTime = Math.min(player.duration || 0, player.currentTime + 5); });
-
-    /* ═══════════════════════════════════════
-       GENERATE — Posts to TextToSpeechController@generate
-       Sends: text, language, voice (+ audio_name)
-       ═══════════════════════════════════════ */
-    generateBtn?.addEventListener('click', function () {
-        if (!textArea.value.trim()) return alert('Please enter script text.');
-        if (!voiceInput.value) return alert('Please select a voice.');
-
-        generateBtn.disabled = true;
-        generateBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
-        setStatus('processing', 'Generating audio...');
-
-        const fd = new FormData(form);
-
-        fetch(form.action, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value },
-            body: fd
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) throw new Error(data.error);
-
-            previewUrl = data.url;
-            player.src = previewUrl;
-            player.load();
-            buildWaveform();
-            player.play().catch(() => {});
-
-            deleteBtn.disabled = false;
-            saveBtn.disabled = false;
-            downloadBtn.disabled = false;
-
-            setStatus('ready', 'Audio ready');
-            generateBtn.innerHTML = '⚡ Regenerate';
-            generateBtn.disabled = false;
-        })
-        .catch(err => {
+            if (data.url) {
+                audio.src = data.url;
+                audio.play().catch(() => {});
+                btn.textContent = '⏸';
+            } else {
+                throw new Error(data.error || 'No URL');
+            }
+        } catch (err) {
             console.error(err);
-            setStatus('error', 'Generation failed');
-            alert('Error: ' + (err.message || 'Unknown error'));
-            generateBtn.innerHTML = '⚡ Generate Audio';
-            generateBtn.disabled = false;
-        });
+            btn.classList.remove('playing'); btn.textContent = '▶'; tr.classList.remove('playing-row');
+            ipEl.classList.remove('visible');
+            alert('Preview failed: ' + (err.message || 'Unknown error'));
+        }
     });
 
-    /* ── Delete ── */
-    deleteBtn?.addEventListener('click', function () {
-        player.pause();
-        player.src = '';
-        previewUrl = null;
-        waveformBars.style.display = 'none';
-        waveformBars.innerHTML = '';
-        waveformPlaceholder.style.display = '';
-        deleteBtn.disabled = true;
-        saveBtn.disabled = true;
-        downloadBtn.disabled = true;
-        elapsed.textContent = '0:00';
-        duration.textContent = '0:00';
-        playPauseBtn.innerHTML = '▶';
-        generateBtn.innerHTML = '⚡ Generate Audio';
-        setStatus('', 'Ready');
-        stopWaveAnim();
+    /* ── Edit (delegated) — calls VoiceController@update ── */
+    const editModal = document.getElementById('editModal');
+    const bsModal   = typeof bootstrap !== 'undefined' ? new bootstrap.Modal(editModal) : null;
+    const editId    = document.getElementById('editId');
+    const editText  = document.getElementById('editText');
+    const editFmt   = document.getElementById('editFormat');
+
+    document.getElementById('voicesTable').addEventListener('click', function (e) {
+        const btn = e.target.closest('.btnEdit');
+        if (!btn) return;
+        const tr = btn.closest('tr');
+        editId.value = tr.dataset.id;
+        editText.value = tr.dataset.text || '';
+        editFmt.value = tr.dataset.format || 'mp3';
+        if (bsModal) bsModal.show();
     });
 
-    /* ── Save to File Manager ── */
-    saveBtn?.addEventListener('click', function () {
-        if (!previewUrl) return;
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
-        setStatus('processing', 'Saving...');
+    document.getElementById('editForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const id = editId.value;
+        const saveBtn = document.getElementById('editSaveBtn');
+        saveBtn.textContent = 'Saving...'; saveBtn.disabled = true;
 
-        fetch('{{ route("file_manager.save_from_tts") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('[name="_token"]').value
-            },
-            body: JSON.stringify({
-                url: previewUrl,
-                name: document.getElementById('audio_name').value || null
-            })
-        })
-        .then(r => r.json())
-        .then(() => {
-            setStatus('ready', 'Saved successfully');
-            saveBtn.innerHTML = '✅ Saved!';
-            setTimeout(() => { saveBtn.innerHTML = '💾 Save to File Manager'; saveBtn.disabled = false; }, 2000);
-        })
-        .catch(() => {
-            setStatus('error', 'Save failed');
-            saveBtn.innerHTML = '💾 Save to File Manager';
-            saveBtn.disabled = false;
-        });
+        try {
+            const res = await fetch(`{{ url('tts/voices') }}/${id}`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ _method: 'PUT', voice_text: editText.value, audio_format: editFmt.value })
+            });
+
+            if (res.ok) {
+                const tr = document.querySelector(`#voicesTable tr[data-id="${id}"]`);
+                if (tr) {
+                    tr.dataset.text = editText.value;
+                    tr.dataset.format = editFmt.value;
+                    const badge = tr.querySelector('.fmt-badge');
+                    if (badge) badge.textContent = editFmt.value.toUpperCase();
+                }
+                if (bsModal) bsModal.hide();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                alert('Save failed: ' + (data.message || res.statusText));
+            }
+        } catch { alert('Network error.'); }
+        finally { saveBtn.textContent = 'Save Changes'; saveBtn.disabled = false; }
     });
 
-    /* ── Download ── */
-    downloadBtn?.addEventListener('click', function () {
-        if (!previewUrl) return;
-        const a = document.createElement('a');
-        a.href = previewUrl;
-        a.download = (document.getElementById('audio_name').value || 'voice_studio') + '.mp3';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-    });
-
-    /* ── Avatar upload ── */
-    const avatarZone = document.getElementById('avatarZone');
-    const avatarImg = document.getElementById('avatarImg');
-
-    avatarZone?.addEventListener('click', function () {
-        const inp = document.createElement('input');
-        inp.type = 'file';
-        inp.accept = 'image/*';
-        inp.onchange = e => {
-            const f = e.target.files[0];
-            if (!f) return;
-            const reader = new FileReader();
-            reader.onload = ev => {
-                avatarImg.src = ev.target.result;
-                avatarImg.style.display = 'block';
-                avatarZone.style.display = 'none';
-            };
-            reader.readAsDataURL(f);
-        };
-        inp.click();
-    });
-
-    avatarImg?.addEventListener('click', function () {
-        this.style.display = 'none';
-        avatarZone.style.display = '';
-    });
 });
 </script>
 @endpush
