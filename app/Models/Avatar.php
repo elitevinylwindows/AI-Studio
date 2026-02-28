@@ -37,14 +37,14 @@ class Avatar extends Model
     public function getImageUrlAttribute(): string
     {
         return $this->image_path
-            ? asset('storage/' . $this->image_path)
+            ? asset('public/storage/' . $this->image_path)
             : 'https://placehold.co/600x600?text=Avatar';
     }
 
     public function getThumbnailUrlAttribute(): string
     {
         return $this->thumbnail_path
-            ? asset('storage/' . $this->thumbnail_path)
+            ? asset('public/storage/' . $this->thumbnail_path)
             : $this->image_url;
     }
 
