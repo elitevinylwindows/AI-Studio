@@ -44,14 +44,42 @@ use App\Models\User;
 
 require __DIR__ . '/auth.php';
 
-// ⚠️ TEMPORARY — delete this route after visiting /clear-cache once
+// ⚠️ TEMPORARY — delete these routes after use
 Route::get('/clear-cache', function () {
     \Artisan::call('route:clear');
     \Artisan::call('config:clear');
     \Artisan::call('cache:clear');
     \Artisan::call('migrate', ['--force' => true]);
-    \Artisan::call('storage:link');
     return '<pre>Cache cleared + Migration run!' . "\n\n" . \Artisan::output() . '</pre>';
+});
+
+Route::get('/debug-avatar', function () {
+    $avatar = \App\Models\Avatar::first();
+    if (!$avatar) return 'No avatars in DB';
+
+    $storagePath = storage_path('app/public/' . $avatar->image_path);
+    $symlinkPath = public_path('storage');
+    $symlinkTarget = is_link($symlinkPath) ? readlink($symlinkPath) : 'NOT A SYMLINK';
+    $fileViaSymlink = public_path('storage/' . $avatar->image_path);
+
+    return '<pre>' . implode("\n", [
+        'DB image_path:    ' . $avatar->image_path,
+        'image_url attr:   ' . $avatar->image_url,
+        'thumbnail_url:    ' . $avatar->thumbnail_url,
+        '',
+        'Storage file:     ' . $storagePath,
+        'Storage exists?   ' . (file_exists($storagePath) ? 'YES' : 'NO'),
+        '',
+        'public/storage:   ' . $symlinkPath,
+        'Symlink target:   ' . $symlinkTarget,
+        'Is link?          ' . (is_link($symlinkPath) ? 'YES' : 'NO'),
+        'Is dir?           ' . (is_dir($symlinkPath) ? 'YES' : 'NO'),
+        '',
+        'Via symlink path: ' . $fileViaSymlink,
+        'Via symlink exists?' . (file_exists($fileViaSymlink) ? 'YES' : 'NO'),
+        '',
+        'All avatars dir files: ' . implode(', ', glob(storage_path('app/public/avatars/*')) ?: ['(empty)']),
+    ]) . '</pre>';
 });
 
 Route::get('/', [HomeController::class,'index'])->middleware(
