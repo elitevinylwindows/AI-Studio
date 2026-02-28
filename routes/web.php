@@ -341,14 +341,16 @@ Route::post('/voices/rename', [VoiceController::class, 'rename'])->name('voices.
 Route::post('/voices/favorite', [VoiceController::class, 'favorite'])->name('voices.favorite');
 
 
-Route::get('/avatar', [AvatarController::class, 'index'])->name('avatar.index');
-Route::get('/avatar/create', [AvatarController::class, 'create'])->name('avatar.create');
-Route::get('/avatar/purchase', [AvatarController::class, 'purchase'])->name('avatar.purchase');
-Route::post('/avatar', [AvatarController::class, 'store'])->name('avatar.store');
-Route::get('/avatar/{avatar}', [AvatarController::class, 'show'])->name('avatar.show');
-Route::get('/avatar/{avatar}/edit', [AvatarController::class, 'edit'])->name('avatar.edit');
-Route::put('/avatar/{avatar}', [AvatarController::class, 'update'])->name('avatar.update');
-Route::delete('/avatar/{avatar}', [AvatarController::class, 'destroy'])->name('avatar.destroy');
+Route::middleware(['auth', 'XSS'])->prefix('avatar')->name('avatar.')->group(function () {
+    Route::get('/',          [AvatarController::class, 'index'])->name('index');
+    Route::get('/create',    [AvatarController::class, 'create'])->name('create');
+    Route::get('/purchase',  [AvatarController::class, 'purchase'])->name('purchase');
+    Route::post('/',         [AvatarController::class, 'store'])->name('store');
+    Route::get('/{avatar}',      [AvatarController::class, 'show'])->name('show');
+    Route::get('/{avatar}/edit',  [AvatarController::class, 'edit'])->name('edit');
+    Route::put('/{avatar}',       [AvatarController::class, 'update'])->name('update');
+    Route::delete('/{avatar}',    [AvatarController::class, 'destroy'])->name('destroy');
+});
 
 
 Route::prefix('videos')->group(function () {
