@@ -5,12 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\Avatar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 
 class AvatarController extends Controller
 {
+    /**
+     * Base path inside public/ where avatar images live.
+     * URL will be: asset('public/storage/avatars/...')
+     */
+    private function avatarDir(string $sub = ''): string
+    {
+        return public_path('storage/avatars' . ($sub ? '/' . $sub : ''));
+    }
+
     /**
      * Avatar gallery — my avatars + public avatars
      */
@@ -18,23 +27,17 @@ class AvatarController extends Controller
     {
         $userId = Auth::id();
 
-        // My avatars
-        $myAvatars = Avatar::ownedBy($userId)
-            ->latest()
-            ->get();
+        $myAvatars = Avatar::ownedBy($userId)->latest()->get();
 
-        // Public avatars (exclude own)
         $publicQuery = Avatar::public()
             ->where('user_id', '!=', $userId)
             ->latest();
 
-        // Optional tag filter
         $tag = $request->get('tag');
         if ($tag && $tag !== 'All') {
             $publicQuery->whereJsonContains('tags', $tag);
         }
 
-        // Optional search
         $q = trim($request->get('q', ''));
         if ($q !== '') {
             $publicQuery->where('name', 'like', "%{$q}%");
@@ -68,34 +71,35 @@ class AvatarController extends Controller
     {
         $request->validate([
             'name'   => 'required|string|max:255',
-            'image'  => 'required|image|mimes:jpeg,jpg,png,webp|max:10240', // 10 MB
+            'image'  => 'required|image|mimes:jpeg,jpg,png,webp|max:10240',
             'gender' => 'nullable|in:male,female,neutral',
             'tags'   => 'nullable|array',
             'tags.*' => 'string|max:50',
             'is_public' => 'nullable|boolean',
         ]);
 
-        // Store original image
         $file     = $request->file('image');
         $filename = 'avatar_' . Auth::id() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $path     = $file->storeAs('avatars', $filename, 'public');
 
-        // Generate thumbnail (300×300 cropped)
+        // Ensure directories exist
+        File::ensureDirectoryExists($this->avatarDir());
+        File::ensureDirectoryExists($this->avatarDir('thumbs'));
+
+        // Save original directly into public/storage/avatars/
+        $file->move($this->avatarDir(), $filename);
+
+        // Generate 300×300 thumbnail
         $thumbFilename = 'thumb_' . $filename;
-        $thumbPath     = 'avatars/thumbs/' . $thumbFilename;
-
-        Storage::disk('public')->makeDirectory('avatars/thumbs');
-
-        $manager   = new ImageManager(new GdDriver());
-        $thumbnail = $manager->read($file->getRealPath());
+        $manager = new ImageManager(new GdDriver());
+        $thumbnail = $manager->read($this->avatarDir() . '/' . $filename);
         $thumbnail->cover(300, 300);
-        $thumbnail->save(Storage::disk('public')->path($thumbPath));
+        $thumbnail->save($this->avatarDir('thumbs') . '/' . $thumbFilename);
 
         $avatar = Avatar::create([
             'user_id'        => Auth::id(),
             'name'           => $request->name,
-            'image_path'     => $path,
-            'thumbnail_path' => $thumbPath,
+            'image_path'     => 'avatars/' . $filename,
+            'thumbnail_path' => 'avatars/thumbs/' . $thumbFilename,
             'gender'         => $request->gender,
             'tags'           => $request->tags ?? [],
             'is_public'      => $request->boolean('is_public', false),
@@ -140,29 +144,29 @@ class AvatarController extends Controller
             'is_public' => 'nullable|boolean',
         ]);
 
-        // Replace image if a new one was uploaded
         if ($request->hasFile('image')) {
             // Delete old files
-            Storage::disk('public')->delete($avatar->image_path);
-            if ($avatar->thumbnail_path) {
-                Storage::disk('public')->delete($avatar->thumbnail_path);
-            }
+            $oldImage = $this->avatarDir() . '/' . basename($avatar->image_path);
+            $oldThumb = $this->avatarDir('thumbs') . '/' . basename($avatar->thumbnail_path);
+            if (file_exists($oldImage)) unlink($oldImage);
+            if (file_exists($oldThumb)) unlink($oldThumb);
 
             $file     = $request->file('image');
             $filename = 'avatar_' . Auth::id() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $path     = $file->storeAs('avatars', $filename, 'public');
+
+            File::ensureDirectoryExists($this->avatarDir());
+            File::ensureDirectoryExists($this->avatarDir('thumbs'));
+
+            $file->move($this->avatarDir(), $filename);
 
             $thumbFilename = 'thumb_' . $filename;
-            $thumbPath     = 'avatars/thumbs/' . $thumbFilename;
-            Storage::disk('public')->makeDirectory('avatars/thumbs');
-
-            $manager   = new ImageManager(new GdDriver());
-            $thumbnail = $manager->read($file->getRealPath());
+            $manager = new ImageManager(new GdDriver());
+            $thumbnail = $manager->read($this->avatarDir() . '/' . $filename);
             $thumbnail->cover(300, 300);
-            $thumbnail->save(Storage::disk('public')->path($thumbPath));
+            $thumbnail->save($this->avatarDir('thumbs') . '/' . $thumbFilename);
 
-            $avatar->image_path     = $path;
-            $avatar->thumbnail_path = $thumbPath;
+            $avatar->image_path     = 'avatars/' . $filename;
+            $avatar->thumbnail_path = 'avatars/thumbs/' . $thumbFilename;
         }
 
         $avatar->name      = $request->name;
@@ -183,10 +187,10 @@ class AvatarController extends Controller
     {
         $this->authorizeOwner($avatar);
 
-        Storage::disk('public')->delete($avatar->image_path);
-        if ($avatar->thumbnail_path) {
-            Storage::disk('public')->delete($avatar->thumbnail_path);
-        }
+        $oldImage = $this->avatarDir() . '/' . basename($avatar->image_path);
+        $oldThumb = $this->avatarDir('thumbs') . '/' . basename($avatar->thumbnail_path);
+        if (file_exists($oldImage)) unlink($oldImage);
+        if (file_exists($oldThumb)) unlink($oldThumb);
 
         $avatar->delete();
 
