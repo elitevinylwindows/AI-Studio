@@ -12,12 +12,14 @@ class Avatar extends Model
     protected $fillable = [
         'user_id',
         'name',
-        'image_path',       // stored relative to storage/app/public  e.g. avatars/abc.png
-        'thumbnail_path',   // auto-generated thumbnail
-        'gender',           // male | female | neutral
-        'tags',             // JSON array  e.g. ["Professional","Lifestyle"]
-        'is_public',        // visible to other users
-        'status',           // active | processing | failed
+        'style',              // realistic | cartoon | 3d
+        'image_path',         // final avatar image (transformed or original)
+        'original_image_path', // original uploaded photo (kept for re-processing)
+        'thumbnail_path',     // auto-generated thumbnail
+        'gender',             // male | female | neutral
+        'tags',               // JSON array  e.g. ["Professional","Lifestyle"]
+        'is_public',          // visible to other users
+        'status',             // active | processing | failed
     ];
 
     protected $casts = [

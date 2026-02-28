@@ -3,17 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\Avatar;
+use App\Services\AvatarTransformService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 
 class AvatarController extends Controller
 {
+    private AvatarTransformService $transformService;
+
+    public function __construct(AvatarTransformService $transformService)
+    {
+        $this->transformService = $transformService;
+    }
+
     /**
      * Base path inside public/ where avatar images live.
-     * URL will be: asset('public/storage/avatars/...')
      */
     private function avatarDir(string $sub = ''): string
     {
@@ -65,50 +73,84 @@ class AvatarController extends Controller
     }
 
     /**
-     * Store a new avatar from uploaded image
+     * Store a new avatar from uploaded image, optionally transforming it.
      */
     public function store(Request $request)
     {
         $request->validate([
-            'name'   => 'required|string|max:255',
-            'image'  => 'required|image|mimes:jpeg,jpg,png,webp|max:10240',
-            'gender' => 'nullable|in:male,female,neutral',
-            'tags'   => 'nullable|array',
-            'tags.*' => 'string|max:50',
+            'name'      => 'required|string|max:255',
+            'image'     => 'required|image|mimes:jpeg,jpg,png,webp|max:10240',
+            'style'     => 'required|in:realistic,cartoon,3d',
+            'gender'    => 'nullable|in:male,female,neutral',
+            'tags'      => 'nullable|array',
+            'tags.*'    => 'string|max:50',
             'is_public' => 'nullable|boolean',
         ]);
 
-        $file     = $request->file('image');
-        $filename = 'avatar_' . Auth::id() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        $file  = $request->file('image');
+        $style = $request->input('style', 'realistic');
+        $uid   = Auth::id();
+        $uniq  = uniqid();
 
         // Ensure directories exist
         File::ensureDirectoryExists($this->avatarDir());
+        File::ensureDirectoryExists($this->avatarDir('originals'));
         File::ensureDirectoryExists($this->avatarDir('thumbs'));
 
-        // Save original directly into public/storage/avatars/
-        $file->move($this->avatarDir(), $filename);
+        // 1. Always save the original upload
+        $origFilename = 'orig_' . $uid . '_' . $uniq . '.' . $file->getClientOriginalExtension();
+        $file->move($this->avatarDir('originals'), $origFilename);
+        $origFullPath = $this->avatarDir('originals') . '/' . $origFilename;
 
-        // Generate 300×300 thumbnail
-        $thumbFilename = 'thumb_' . $filename;
+        // 2. Transform based on style
+        $finalFilename = 'avatar_' . $uid . '_' . $uniq . '.png';
+
+        if ($style === 'realistic') {
+            // No transformation — just copy original as the avatar
+            copy($origFullPath, $this->avatarDir() . '/' . $finalFilename);
+        } else {
+            // Send to OpenAI for cartoon or 3D transformation
+            try {
+                $transformedContent = $this->transformService->transform($origFullPath, $style);
+
+                if ($transformedContent) {
+                    file_put_contents($this->avatarDir() . '/' . $finalFilename, $transformedContent);
+                } else {
+                    // Transformation failed — fall back to original
+                    copy($origFullPath, $this->avatarDir() . '/' . $finalFilename);
+                    session()->flash('warning', 'AI transformation failed. The original image was saved instead. You can retry by editing the avatar.');
+                }
+            } catch (\Throwable $e) {
+                Log::error('Avatar transform error: ' . $e->getMessage());
+                copy($origFullPath, $this->avatarDir() . '/' . $finalFilename);
+                session()->flash('warning', 'AI transformation error: ' . $e->getMessage() . '. Original image saved.');
+            }
+        }
+
+        // 3. Generate thumbnail from the final avatar image
+        $thumbFilename = 'thumb_' . $uid . '_' . $uniq . '.png';
         $manager = new ImageManager(new GdDriver());
-        $thumbnail = $manager->read($this->avatarDir() . '/' . $filename);
+        $thumbnail = $manager->read($this->avatarDir() . '/' . $finalFilename);
         $thumbnail->cover(300, 300);
         $thumbnail->save($this->avatarDir('thumbs') . '/' . $thumbFilename);
 
+        // 4. Save to DB
         $avatar = Avatar::create([
-            'user_id'        => Auth::id(),
-            'name'           => $request->name,
-            'image_path'     => 'avatars/' . $filename,
-            'thumbnail_path' => 'avatars/thumbs/' . $thumbFilename,
-            'gender'         => $request->gender,
-            'tags'           => $request->tags ?? [],
-            'is_public'      => $request->boolean('is_public', false),
-            'status'         => 'active',
+            'user_id'             => $uid,
+            'name'                => $request->name,
+            'style'               => $style,
+            'image_path'          => 'avatars/' . $finalFilename,
+            'original_image_path' => 'avatars/originals/' . $origFilename,
+            'thumbnail_path'      => 'avatars/thumbs/' . $thumbFilename,
+            'gender'              => $request->gender,
+            'tags'                => $request->tags ?? [],
+            'is_public'           => $request->boolean('is_public', false),
+            'status'              => 'active',
         ]);
 
         return redirect()
             ->route('avatar.index')
-            ->with('success', "Avatar \"{$avatar->name}\" created successfully.");
+            ->with('success', "Avatar \"{$avatar->name}\" created as {$style} style.");
     }
 
     /**
@@ -138,6 +180,7 @@ class AvatarController extends Controller
         $request->validate([
             'name'      => 'required|string|max:255',
             'image'     => 'nullable|image|mimes:jpeg,jpg,png,webp|max:10240',
+            'style'     => 'nullable|in:realistic,cartoon,3d',
             'gender'    => 'nullable|in:male,female,neutral',
             'tags'      => 'nullable|array',
             'tags.*'    => 'string|max:50',
@@ -145,28 +188,52 @@ class AvatarController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            // Delete old files
-            $oldImage = $this->avatarDir() . '/' . basename($avatar->image_path);
-            $oldThumb = $this->avatarDir('thumbs') . '/' . basename($avatar->thumbnail_path);
-            if (file_exists($oldImage)) unlink($oldImage);
-            if (file_exists($oldThumb)) unlink($oldThumb);
+            $file  = $request->file('image');
+            $style = $request->input('style', $avatar->style ?? 'realistic');
+            $uniq  = uniqid();
 
-            $file     = $request->file('image');
-            $filename = 'avatar_' . Auth::id() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            // Delete old files
+            $this->deleteAvatarFiles($avatar);
 
             File::ensureDirectoryExists($this->avatarDir());
+            File::ensureDirectoryExists($this->avatarDir('originals'));
             File::ensureDirectoryExists($this->avatarDir('thumbs'));
 
-            $file->move($this->avatarDir(), $filename);
+            // Save original
+            $origFilename = 'orig_' . Auth::id() . '_' . $uniq . '.' . $file->getClientOriginalExtension();
+            $file->move($this->avatarDir('originals'), $origFilename);
+            $origFullPath = $this->avatarDir('originals') . '/' . $origFilename;
 
-            $thumbFilename = 'thumb_' . $filename;
+            // Transform
+            $finalFilename = 'avatar_' . Auth::id() . '_' . $uniq . '.png';
+
+            if ($style === 'realistic') {
+                copy($origFullPath, $this->avatarDir() . '/' . $finalFilename);
+            } else {
+                try {
+                    $content = $this->transformService->transform($origFullPath, $style);
+                    if ($content) {
+                        file_put_contents($this->avatarDir() . '/' . $finalFilename, $content);
+                    } else {
+                        copy($origFullPath, $this->avatarDir() . '/' . $finalFilename);
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('Avatar transform error: ' . $e->getMessage());
+                    copy($origFullPath, $this->avatarDir() . '/' . $finalFilename);
+                }
+            }
+
+            // Thumbnail
+            $thumbFilename = 'thumb_' . Auth::id() . '_' . $uniq . '.png';
             $manager = new ImageManager(new GdDriver());
-            $thumbnail = $manager->read($this->avatarDir() . '/' . $filename);
+            $thumbnail = $manager->read($this->avatarDir() . '/' . $finalFilename);
             $thumbnail->cover(300, 300);
             $thumbnail->save($this->avatarDir('thumbs') . '/' . $thumbFilename);
 
-            $avatar->image_path     = 'avatars/' . $filename;
-            $avatar->thumbnail_path = 'avatars/thumbs/' . $thumbFilename;
+            $avatar->style               = $style;
+            $avatar->image_path          = 'avatars/' . $finalFilename;
+            $avatar->original_image_path = 'avatars/originals/' . $origFilename;
+            $avatar->thumbnail_path      = 'avatars/thumbs/' . $thumbFilename;
         }
 
         $avatar->name      = $request->name;
@@ -186,17 +253,31 @@ class AvatarController extends Controller
     public function destroy(Avatar $avatar)
     {
         $this->authorizeOwner($avatar);
-
-        $oldImage = $this->avatarDir() . '/' . basename($avatar->image_path);
-        $oldThumb = $this->avatarDir('thumbs') . '/' . basename($avatar->thumbnail_path);
-        if (file_exists($oldImage)) unlink($oldImage);
-        if (file_exists($oldThumb)) unlink($oldThumb);
-
+        $this->deleteAvatarFiles($avatar);
         $avatar->delete();
 
         return redirect()
             ->route('avatar.index')
             ->with('success', 'Avatar deleted.');
+    }
+
+    /**
+     * Remove all image files associated with an avatar.
+     */
+    private function deleteAvatarFiles(Avatar $avatar): void
+    {
+        $files = [
+            $this->avatarDir() . '/' . basename($avatar->image_path),
+            $this->avatarDir('thumbs') . '/' . basename($avatar->thumbnail_path),
+        ];
+
+        if ($avatar->original_image_path) {
+            $files[] = $this->avatarDir('originals') . '/' . basename($avatar->original_image_path);
+        }
+
+        foreach ($files as $f) {
+            if ($f && file_exists($f)) unlink($f);
+        }
     }
 
     /**

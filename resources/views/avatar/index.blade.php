@@ -66,9 +66,16 @@
 
                     <div class="p-2">
                         <div class="fw-semibold small text-truncate">{{ $av->name }}</div>
-                        @if($av->gender)
-                        <div class="text-muted small">{{ ucfirst($av->gender) }}</div>
-                        @endif
+                        <div class="d-flex align-items-center gap-1 mt-1">
+                            @if($av->style && $av->style !== 'realistic')
+                            <span class="badge bg-{{ $av->style === 'cartoon' ? 'info' : 'purple' }} rounded-pill" style="font-size:10px;">
+                                {{ ucfirst($av->style) }}
+                            </span>
+                            @endif
+                            @if($av->gender)
+                            <span class="text-muted small">{{ ucfirst($av->gender) }}</span>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
