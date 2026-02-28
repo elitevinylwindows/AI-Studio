@@ -293,8 +293,10 @@ document.addEventListener('DOMContentLoaded', function () {
           audio.src = data.url;
           audio.style.display = 'block';
           audio.play().catch(()=>{});
+        } else if (data.error) {
+          alert('Preview error: ' + data.error);
         } else {
-          alert('No preview URL returned.');
+          alert('No preview URL returned. Response: ' + JSON.stringify(data));
         }
       } catch (e) {
         console.error(e);
