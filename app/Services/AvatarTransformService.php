@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class AvatarTransformService
@@ -17,7 +16,6 @@ class AvatarTransformService
     public function transform(string $sourceImagePath, string $style): ?string
     {
         if ($style === 'realistic') {
-            // No transformation needed — return original file content
             return file_get_contents($sourceImagePath);
         }
 
@@ -28,41 +26,64 @@ class AvatarTransformService
 
         $prompt = $this->buildPrompt($style);
 
-        // Use OpenAI's gpt-image-1 model (image editing / generation)
-        // We send the original image + a style prompt to get a transformed version
-        $response = Http::timeout(120)
-            ->withHeaders([
-                'Authorization' => 'Bearer ' . $apiKey,
-            ])
-            ->attach('image', file_get_contents($sourceImagePath), 'avatar.png')
-            ->post('https://api.openai.com/v1/images/edits', [
-                ['name' => 'prompt',  'contents' => $prompt],
-                ['name' => 'model',   'contents' => 'gpt-image-1'],
-                ['name' => 'n',       'contents' => '1'],
-                ['name' => 'size',    'contents' => '1024x1024'],
-            ]);
+        // Use cURL directly for reliable multipart/form-data upload to OpenAI
+        $ch = curl_init();
 
-        if (!$response->successful()) {
-            Log::error('OpenAI image transform failed', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
-            return null;
+        $postFields = [
+            'image'  => new \CURLFile($sourceImagePath, 'image/png', 'avatar.png'),
+            'prompt' => $prompt,
+            'model'  => 'gpt-image-1',
+            'n'      => 1,
+            'size'   => '1024x1024',
+        ];
+
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => 'https://api.openai.com/v1/images/edits',
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $postFields,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 120,
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $apiKey,
+            ],
+        ]);
+
+        $responseBody = curl_exec($ch);
+        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError    = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            Log::error('OpenAI image transform cURL error', ['error' => $curlError]);
+            throw new \RuntimeException('cURL error: ' . $curlError);
         }
 
-        $data = $response->json();
+        if ($httpCode !== 200) {
+            Log::error('OpenAI image transform failed', [
+                'http_code' => $httpCode,
+                'body'      => $responseBody,
+            ]);
 
-        // The response contains base64-encoded image data
+            // Try to extract a human-readable error
+            $decoded = json_decode($responseBody, true);
+            $msg = $decoded['error']['message'] ?? "HTTP {$httpCode}";
+            throw new \RuntimeException('OpenAI API error: ' . $msg);
+        }
+
+        $data = json_decode($responseBody, true);
+
+        // Response contains base64-encoded image data
         if (!empty($data['data'][0]['b64_json'])) {
             return base64_decode($data['data'][0]['b64_json']);
         }
 
-        // Or it might return a URL
+        // Or a URL to the image
         if (!empty($data['data'][0]['url'])) {
-            return file_get_contents($data['data'][0]['url']);
+            $content = file_get_contents($data['data'][0]['url']);
+            return $content ?: null;
         }
 
-        Log::error('OpenAI image transform: unexpected response format', ['data' => $data]);
+        Log::error('OpenAI image transform: unexpected response', ['data' => $data]);
         return null;
     }
 

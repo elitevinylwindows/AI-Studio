@@ -374,6 +374,7 @@ Route::middleware(['auth', 'XSS'])->prefix('avatar')->name('avatar.')->group(fun
     Route::get('/create',    [AvatarController::class, 'create'])->name('create');
     Route::get('/purchase',  [AvatarController::class, 'purchase'])->name('purchase');
     Route::post('/',         [AvatarController::class, 'store'])->name('store');
+    Route::post('/{avatar}/transform', [AvatarController::class, 'transform'])->name('transform');
     Route::get('/{avatar}',      [AvatarController::class, 'show'])->name('show');
     Route::get('/{avatar}/edit',  [AvatarController::class, 'edit'])->name('edit');
     Route::put('/{avatar}',       [AvatarController::class, 'update'])->name('update');
