@@ -44,6 +44,16 @@ use App\Models\User;
 
 require __DIR__ . '/auth.php';
 
+// ⚠️ TEMPORARY — delete this route after visiting /clear-cache once
+Route::get('/clear-cache', function () {
+    \Artisan::call('route:clear');
+    \Artisan::call('config:clear');
+    \Artisan::call('cache:clear');
+    \Artisan::call('migrate', ['--force' => true]);
+    \Artisan::call('storage:link');
+    return '<pre>Cache cleared + Migration run!' . "\n\n" . \Artisan::output() . '</pre>';
+});
+
 Route::get('/', [HomeController::class,'index'])->middleware(
     [
 
@@ -333,9 +343,12 @@ Route::post('/voices/favorite', [VoiceController::class, 'favorite'])->name('voi
 
 Route::get('/avatar', [AvatarController::class, 'index'])->name('avatar.index');
 Route::get('/avatar/create', [AvatarController::class, 'create'])->name('avatar.create');
+Route::get('/avatar/purchase', [AvatarController::class, 'purchase'])->name('avatar.purchase');
+Route::post('/avatar', [AvatarController::class, 'store'])->name('avatar.store');
 Route::get('/avatar/{avatar}', [AvatarController::class, 'show'])->name('avatar.show');
 Route::get('/avatar/{avatar}/edit', [AvatarController::class, 'edit'])->name('avatar.edit');
-Route::get('/avatar/purchase', [AvatarController::class, 'purchase'])->name('avatar.purchase');
+Route::put('/avatar/{avatar}', [AvatarController::class, 'update'])->name('avatar.update');
+Route::delete('/avatar/{avatar}', [AvatarController::class, 'destroy'])->name('avatar.destroy');
 
 
 Route::prefix('videos')->group(function () {
