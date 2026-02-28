@@ -27,6 +27,7 @@ use App\Http\Controllers\VoiceController;
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\CreateVideoController;
 use App\Http\Controllers\StudioController;
+use App\Http\Controllers\TalkingHeadController;
 
 
 use App\Models\User;
@@ -381,6 +382,14 @@ Route::middleware(['auth', 'XSS'])->prefix('avatar')->name('avatar.')->group(fun
     Route::delete('/{avatar}',    [AvatarController::class, 'destroy'])->name('destroy');
 });
 
+Route::middleware(['auth', 'XSS'])->prefix('talking-head')->name('talking-head.')->group(function () {
+    Route::get('/',             [TalkingHeadController::class, 'index'])->name('index');
+    Route::get('/create',       [TalkingHeadController::class, 'create'])->name('create');
+    Route::post('/',            [TalkingHeadController::class, 'store'])->name('store');
+    Route::post('/{talkingHead}/generate', [TalkingHeadController::class, 'generate'])->name('generate');
+    Route::get('/{talkingHead}/status',    [TalkingHeadController::class, 'status'])->name('status');
+    Route::delete('/{talkingHead}',        [TalkingHeadController::class, 'destroy'])->name('destroy');
+});
 
 Route::prefix('videos')->group(function () {
     Route::get('/create', [CreateVideoController::class, 'index'])->name('videos.index');

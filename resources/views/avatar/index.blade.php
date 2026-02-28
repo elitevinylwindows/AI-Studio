@@ -24,6 +24,9 @@
 
     <div class="d-flex align-items-center justify-content-between mb-4">
         <h1 class="mb-0">Avatars</h1>
+        <a href="{{ route('talking-head.create') }}" class="btn btn-primary">
+            <i class="ti ti-video me-1"></i> Generate Talking Head
+        </a>
     </div>
 
     {{-- ─── My Avatars ─────────────────────────────────────────── --}}
